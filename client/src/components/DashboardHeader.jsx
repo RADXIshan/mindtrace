@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, Bell, Menu, Battery, Wifi } from 'lucide-react';
+import { Search, Bell, Menu, Battery, Wifi, LogOut } from 'lucide-react';
+import { logout } from '../services/auth';
 
 const DashboardHeader = ({ onMenuClick }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,9 +132,16 @@ const DashboardHeader = ({ onMenuClick }) => {
 
           {/* User Profile */}
           <div className="hidden md:flex items-center gap-3 pl-4 border-l border-gray-200">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+            <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
               JD
             </div>
+            <button
+              onClick={logout}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-red-600"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>

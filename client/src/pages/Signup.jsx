@@ -1,11 +1,38 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { toast } from 'react-hot-toast';
 import { ArrowRight, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
-import googleLogo from '../assets/google.png';
+import { signup } from '../services/auth';
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+    try {
+      await signup(formData.email, formData.password, formData.name);
+      toast.success('Account created successfully!');
+      // Small delay to show the loading effect
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || 'Signup failed. Please try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="max-h-screen flex bg-white">
@@ -39,7 +66,13 @@ const Signup = () => {
             </p>
           </div>
 
-          <form className="mt-8 space-y-6" onSubmit={(e) => e.preventDefault()}>
+          {error && (
+            <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm text-center">
+              {error}
+            </div>
+          )}
+
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-5">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -55,6 +88,8 @@ const Signup = () => {
                     type="text"
                     autoComplete="name"
                     required
+                    value={formData.name}
+                    onChange={handleChange}
                     className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     placeholder="John Doe"
                   />
@@ -75,6 +110,8 @@ const Signup = () => {
                     type="email"
                     autoComplete="email"
                     required
+                    value={formData.email}
+                    onChange={handleChange}
                     className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     placeholder="you@example.com"
                   />
@@ -95,6 +132,8 @@ const Signup = () => {
                       type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
                       required
+                      value={formData.password}
+                      onChange={handleChange}
                       className="appearance-none block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                       placeholder="••••••••"
                     />
@@ -135,33 +174,28 @@ const Signup = () => {
 
             <button
               type="submit"
-              className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all duration-300 hover:shadow-xl relative overflow-hidden group"
+              disabled={isLoading}
+              className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all duration-300 hover:shadow-xl relative overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <span className="relative z-10 flex items-center gap-2">
-                Create Account
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                {isLoading ? 'Creating Account...' : 'Create Account'}
+                {!isLoading && <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />}
               </span>
               <div className="absolute inset-0 bg-linear-to-r from-gray-800 via-gray-700 to-gray-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
           </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or sign up with</span>
-              </div>
+          {/* Loading Overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
+               <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                  <p className="text-gray-600 font-medium">Setting up your dashboard...</p>
+               </div>
             </div>
+          )}
 
-            <div className="mt-6">
-              <button className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-xl shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-700 transition-all duration-300 hover:shadow-lg">
-                <img src={googleLogo} alt="Google" className="h-5 w-5" />
-                <span className="ml-2">Sign up with Google</span>
-              </button>
-            </div>
-          </div>
+
         </div>
       </div>
 

@@ -4,3 +4,10 @@ uvicorn>=0.38.0
 transformers
 langchain
 langchain-huggingface
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+bcrypt==3.2.2
+python-jose[cryptography]
+httpx
+pydantic[email]

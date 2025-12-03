@@ -29,20 +29,16 @@ const Landing = () => {
       <section className="py-20 px-6 lg:px-8 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="relative aspect-square md:aspect-video rounded-3xl overflow-hidden shadow-2xl group cursor-default">
-            {/* Background Image with Zoom Effect */}
             <img 
               src="https://images.unsplash.com/photo-1592478411213-6153e4ebc07d?q=80&w=2912&auto=format&fit=crop" 
               alt="Smart glasses technology"
               className="absolute inset-0 w-full h-full object-cover"
             />
             
-            {/* Cinematic Gradient Overlay */}
             <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-80" />
             
-            {/* Glass Content Card */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative bg-white/5 backdrop-blur-xl px-16 py-12 rounded-3xl border border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.3)] overflow-hidden group-hover:bg-white/10 transition-all duration-500 hover:border-white/20">
-                {/* Shine Effect */}
                 <div className="absolute inset-0 bg-linear-to-tr from-white/0 via-white/5 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out" />
                 
                 <div className="relative z-10 text-center">

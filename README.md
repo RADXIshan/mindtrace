@@ -48,6 +48,19 @@ cd ../server
 uv pip install -r requirements.txt
 uv sync
 ```
+
+To activate the virtual environment:
+
+**Mac/Linux:**
+```bash
+source .venv/bin/activate
+```
+
+**Windows:**
+```bash
+.venv\Scripts\activate
+```
+
 *Note: If you prefer `pip`, you can install dependencies from `requirements.txt`, but `uv` is recommended for this project.*
 
 ## Environment Variables

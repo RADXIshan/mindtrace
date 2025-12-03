@@ -1,13 +1,80 @@
+# --- Core Framework ---
 fastapi>=0.123.4
-python-dotenv>=1.2.1
 uvicorn>=0.38.0
+python-dotenv>=1.2.1
+
+# --- AI / NLP / LangChain ---
 transformers
 langchain
 langchain-huggingface
-sqlalchemy
-psycopg2-binary
+
+# --- Authentication & Security ---
+python-jose[cryptography]
 passlib[bcrypt]
 bcrypt==3.2.2
-python-jose[cryptography]
+
+# --- Database ---
+sqlalchemy
+psycopg2-binary
+
+# --- Networking ---
 httpx
+requests==2.32.5
+urllib3==2.5.0
+certifi==2025.11.12
+charset-normalizer==3.4.4
+idna ; python_version>="3.0"  # (optional, auto installed normally)
+
+# --- Face Recognition / CV ---
+insightface @ https://github.com/Gourieff/Assets/raw/main/Insightface/insightface-0.7.3-cp310-cp310-win_amd64.whl
+onnx==1.20.0
+onnxruntime==1.23.2
+opencv-python==4.9.0.80
+pillow==12.0.0
+numpy<2.0
+scikit-image==0.25.2
+albucore==0.0.24
+albumentations==2.0.8
+imageio==2.37.2
+tifffile==2025.5.10
+
+# --- ML / Math ---
+scikit-learn==1.7.2
+scipy==1.15.3
+ml-dtypes==0.5.4
+mpmath==1.3.0
+networkx==3.4.2
+sympy==1.14.0
+
+# --- Utilities ---
+prettytable==3.17.0
+tqdm==4.67.1
+lazy-loader==0.4
+joblib==1.5.2
+packaging==25.0
+pyyaml==6.0.3
+
+# --- Plotting ---
+matplotlib==3.10.7
+contourpy==1.3.2
+cycler==0.12.1
+fonttools==4.61.0
+kiwisolver==1.4.9
+pyparsing==3.2.5
+python-dateutil==2.9.0.post0
+
+# --- Terminal & Logs ---
+coloredlogs==15.0.1
+humanfriendly==10.0
+wcwidth==0.2.14
+
+# --- Other Dependencies ---
+protobuf==6.33.1
+simsimd==6.5.3
+six==1.17.0
+stringzilla==4.4.0
+easydict==1.13
+flatbuffers==25.9.23
+cython==3.2.2
 pydantic[email]
+pyreadline3==3.5.4

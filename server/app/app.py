@@ -18,6 +18,7 @@ from .routes.interactionRoutes import router as interaction_router
 from .routes.alertRoutes import router as alert_router
 from .routes.reminderRoutes import router as reminder_router
 from .routes.sosRoutes import router as sos_router
+from .routes.userRoutes import router as user_router
 
 CLIENT_URL = os.getenv("CLIENT_URL", "http://localhost:5173")
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-should-be-in-env")
@@ -61,6 +62,7 @@ app.include_router(interaction_router)
 app.include_router(alert_router)
 app.include_router(reminder_router)
 app.include_router(sos_router)
+app.include_router(user_router)
 
 @app.get("/")
 def server_status():

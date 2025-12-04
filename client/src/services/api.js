@@ -71,4 +71,11 @@ export const sosApi = {
   updateConfig: (data) => api.put('/sos/config', data),
 };
 
+export const userApi = {
+  getProfile: () => api.get('/user/profile'),
+  updateProfile: (data) => api.put('/user/profile', data),
+  changePassword: (data) => api.post('/user/change-password', data),
+  deleteAccount: () => api.delete('/user/account'),
+};
+
 export default api;

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { faqData } from '../../data/faqData';
-import FAQCategoryTabs from '../faq/FAQCategoryTabs';
-import FAQAccordion from '../faq/FAQAccordion';
+import { faqData } from '../data/faqData';
+import FAQCategoryTabs from './FAQCategoryTabs';
+import FAQAccordion from './FAQAccordion';
 
 const FAQSection = () => {
     const [activeCategoryId, setActiveCategoryId] = useState(faqData[0].id);

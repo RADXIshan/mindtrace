@@ -3,7 +3,7 @@
  */
 
 import { useMemo } from 'react';
-import { User, Bot, AlertCircle } from 'lucide-react';
+import { User, AlertCircle } from 'lucide-react';
 import TypingIndicator from './TypingIndicator';
 
 /**
@@ -74,7 +74,7 @@ const ChatMessage = ({ message }) => {
                 ) : isError ? (
                     <AlertCircle className="w-4 h-4" />
                 ) : (
-                    <Bot className="w-4 h-4" />
+                    <img src="/logo.png" alt="MindTrace" className="w-4 h-4 object-contain" />
                 )}
             </div>
 

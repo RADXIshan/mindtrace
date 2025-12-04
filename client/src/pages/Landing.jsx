@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import FAQSection from '../components/sections/FAQSection';
+import FAQSection from '../components/FAQSection';
 import { Brain, Mic, Eye, Shield, Clock, Zap, Heart, Users, Lock, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router';
 

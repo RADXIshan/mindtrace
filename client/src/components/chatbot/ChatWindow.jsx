@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { X, Trash2, Download, AlertCircle, Minus } from 'lucide-react';
+import { X, Trash2, AlertCircle } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import QuickActions from './QuickActions';
@@ -90,7 +90,7 @@ const ChatWindow = ({
             <div className="chat-window-header">
                 <div className="chat-window-title">
                     <div className="chat-window-avatar">
-                        <span className="chat-window-avatar-icon">🤖</span>
+                        <img src="/logo.png" alt="MindTrace" className="w-6 h-6 object-contain" />
                     </div>
                     <div>
                         <h2 className="chat-window-name">AI Assistant</h2>
@@ -102,36 +102,16 @@ const ChatWindow = ({
 
                 <div className="chat-window-actions">
                     {messages.length > 0 && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={() => onExport('text')}
-                                className="chat-window-action-btn"
-                                aria-label="Export chat"
-                                title="Export conversation"
-                            >
-                                <Download className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={onClearChat}
-                                className="chat-window-action-btn chat-window-action-danger"
-                                aria-label="Clear chat"
-                                title="Clear conversation"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        </>
+                        <button
+                            type="button"
+                            onClick={onClearChat}
+                            className="chat-window-action-btn chat-window-action-danger"
+                            aria-label="Clear chat"
+                            title="Clear conversation"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
                     )}
-                    <button
-                        type="button"
-                        onClick={onMinimize}
-                        className="chat-window-action-btn"
-                        aria-label="Minimize chat"
-                        title="Minimize"
-                    >
-                        <Minus className="w-4 h-4" />
-                    </button>
                     <button
                         type="button"
                         onClick={onClose}
@@ -183,7 +163,7 @@ const ChatWindow = ({
                         {isTyping && !messages.some((m) => m.isStreaming) && (
                             <div className="chat-message chat-message-assistant">
                                 <div className="chat-message-avatar chat-avatar-assistant">
-                                    <span>🤖</span>
+                                    <img src="/logo.png" alt="MindTrace" className="w-6 h-6 object-contain" />
                                 </div>
                                 <div className="chat-message-content">
                                     <div className="chat-message-bubble">

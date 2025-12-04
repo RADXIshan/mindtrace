@@ -157,20 +157,20 @@ const DashboardHeader = ({ onMenuClick }) => {
           </div>
 
           {/* User Profile */}
-          <div className="hidden md:flex items-center gap-3 pl-4 border-l border-gray-200">
+          <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
             <button
               onClick={() => navigate('/dashboard/settings')}
-              className="hover:shadow-lg transition-all duration-200 hover:scale-105"
+              className="group relative transition-all duration-200"
               title={profile?.full_name || profile?.email || 'Profile Settings'}
             >
               {profile?.profile_image_url ? (
                 <img
                   src={profile.profile_image_url}
                   alt="Profile"
-                  className="w-9 h-9 rounded-full object-cover border-2 border-gray-200"
+                  className="w-9 h-9 rounded-full object-cover border-2 border-gray-200 group-hover:border-gray-400 transition-colors"
                 />
               ) : (
-                <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm group-hover:from-indigo-600 group-hover:to-purple-600 transition-all">
                   {getInitials()}
                 </div>
               )}

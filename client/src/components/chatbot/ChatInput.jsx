@@ -3,7 +3,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, X } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 
 /**
  * Chat input component
@@ -112,25 +112,6 @@ const ChatInput = ({
             )}
 
             <div className="chat-input-container">
-                {/* Attachment button */}
-                <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="chat-input-attach-btn"
-                    aria-label="Attach file"
-                    disabled={disabled}
-                >
-                    <Paperclip className="w-5 h-5" />
-                </button>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/*,.pdf,.doc,.docx,.txt"
-                />
-
                 {/* Message input */}
                 <textarea
                     ref={textareaRef}

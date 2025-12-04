@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Users, Bell, Calendar, TrendingUp, Activity, Plus, ArrowRight, AlertCircle } from 'lucide-react';
 import AddContactModal from '../components/AddContactModal';
 import AddReminderModal from '../components/AddReminderModal';
-import { interactionsApi, remindersApi, alertsApi } from '../services/api';
+import { interactionsApi, remindersApi, alertsApi, userApi } from '../services/api';
 import toast from 'react-hot-toast';
 
 const DashboardHome = () => {
@@ -20,10 +20,15 @@ const DashboardHome = () => {
     upcomingReminders: 0
   });
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
+
+      // Fetch Profile
+      const profileRes = await userApi.getProfile();
+      setProfile(profileRes.data);
 
       // Fetch Interactions
       const interactionsRes = await interactionsApi.getAll({ limit: 3 });
@@ -90,7 +95,7 @@ const DashboardHome = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-          Welcome back, John
+          Welcome back, {profile?.full_name?.split(' ')[0] || profile?.email?.split('@')[0] || 'there'}
         </h1>
         <p className="text-lg text-gray-600">
           Here's what's happening with your loved one today

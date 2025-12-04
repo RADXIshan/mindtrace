@@ -1,13 +1,66 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { Search, Bell, Menu, Battery, Wifi, LogOut } from 'lucide-react';
 import { logout } from '../services/auth';
+import { userApi, alertsApi } from '../services/api';
 
 const DashboardHeader = ({ onMenuClick }) => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [notificationCount, setNotificationCount] = useState(3);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [glassesConnected, setGlassesConnected] = useState(true);
   const [batteryLevel, setBatteryLevel] = useState(87);
+  const [profile, setProfile] = useState(null);
+
+  // Fetch user profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await userApi.getProfile();
+        setProfile(response.data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+    fetchProfile();
+
+    // Listen for profile updates
+    const handleProfileUpdate = (event) => {
+      setProfile(event.detail);
+    };
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, []);
+
+  // Fetch unread alerts count
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await alertsApi.getUnreadCount();
+      setNotificationCount(response.data.count);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+
+    // Listen for custom event to refresh count
+    const handleRefresh = () => fetchUnreadCount();
+    window.addEventListener('refreshUnreadCount', handleRefresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('refreshUnreadCount', handleRefresh);
+    };
+  }, []);
 
   // Simulate real-time updates
   useEffect(() => {
@@ -25,9 +78,25 @@ const DashboardHeader = ({ onMenuClick }) => {
     return 'text-red-600';
   };
 
+  const getInitials = () => {
+    if (!profile) return 'U';
+    if (profile.full_name) {
+      return profile.full_name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    if (profile.email) {
+      return profile.email[0].toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between p-[19px]">
         {/* Left: Menu + Search */}
         <div className="flex items-center gap-4 flex-1">
           <button
@@ -74,7 +143,7 @@ const DashboardHeader = ({ onMenuClick }) => {
           {/* Notifications */}
           <div className="relative">
             <button
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => navigate('/dashboard/alerts')}
               className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <Bell className="h-5 w-5 text-gray-600" />
@@ -85,56 +154,27 @@ const DashboardHeader = ({ onMenuClick }) => {
                 </span>
               )}
             </button>
-
-            {/* Notification Dropdown */}
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b border-gray-200">
-                  <h3 className="font-semibold text-gray-900">Notifications</h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  <div className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">Visitor Arrived</p>
-                        <p className="text-xs text-gray-600 mt-1">Sarah Johnson arrived • 2 hours ago</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">New Summary Ready</p>
-                        <p className="text-xs text-gray-600 mt-1">Conversation with Sarah • 1 hour ago</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">Medication Reminder</p>
-                        <p className="text-xs text-gray-600 mt-1">Evening dose acknowledged • 6 hours ago</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3 border-t border-gray-200 text-center">
-                  <button className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors">
-                    View All Notifications
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* User Profile */}
           <div className="hidden md:flex items-center gap-3 pl-4 border-l border-gray-200">
-            <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-              JD
-            </div>
+            <button
+              onClick={() => navigate('/dashboard/settings')}
+              className="hover:shadow-lg transition-all duration-200 hover:scale-105"
+              title={profile?.full_name || profile?.email || 'Profile Settings'}
+            >
+              {profile?.profile_image_url ? (
+                <img
+                  src={profile.profile_image_url}
+                  alt="Profile"
+                  className="w-9 h-9 rounded-full object-cover border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                  {getInitials()}
+                </div>
+              )}
+            </button>
             <button
               onClick={logout}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-red-600"

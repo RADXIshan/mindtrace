@@ -10,42 +10,29 @@ const HUDOverlay = ({ mode, recognitionResult }) => {
     }, []);
 
     // Helper to get style for tracking tag
-    const getTagStyle = () => {
-        if (!recognitionResult?.position) {
-            // Fallback to center bottom if no position (shouldn't happen often with tracking)
-            return {
-                position: 'absolute',
-                bottom: '10%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                transition: 'all 0.2s ease-out' // Smooth transition for tracking
-            };
-        }
+    const getTagStyle = (position) => {
+        if (!position) return {};
 
-        const { left, top, width, height } = recognitionResult.position;
-
-        // Position the tag slightly above or below the face box
-        // Let's place it to the right of the face for a futuristic/AR look, or below.
-        // User asked for "tag on the recognition". Let's place it floating near the face.
+        const { left, top, width, height } = position;
 
         return {
             position: 'absolute',
-            left: `${left + width + 20}px`, // 20px to the right of the face
-            top: `${top}px`, // Aligned with top of face
-            transition: 'all 0.1s linear' // Fast transition for smooth tracking
+            left: `${left + width + 40}px`, // Increased offset for larger tag
+            top: `${top}px`,
+            transition: 'all 0.15s ease-out' // Smoother transition to reduce jitter
         };
     };
 
-    const TagContent = () => (
-        <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-lg shadow-lg text-white">
+    const TagContent = ({ result }) => (
+        <div className="bg-black/40 backdrop-blur-xl border border-white/30 p-6 rounded-xl shadow-2xl text-white min-w-[200px]">
             <div className="flex flex-col">
-                <span className="text-xs font-serif tracking-widest uppercase opacity-70 mb-1">Identified</span>
-                <h1 className="text-xl font-serif font-bold leading-tight">{recognitionResult.name}</h1>
-                <span className="text-sm font-sans opacity-90 mt-1">{recognitionResult.relation}</span>
+                <span className="text-xs font-serif tracking-[0.2em] uppercase text-blue-300 mb-2">Identified</span>
+                <h1 className="text-3xl font-serif font-bold leading-none tracking-wide mb-1">{result.name}</h1>
+                <span className="text-lg font-sans opacity-90 text-gray-200">{result.relation}</span>
             </div>
             {/* Connecting Line */}
-            <div className="absolute top-4 -left-5 w-5 h-px bg-white/30" />
-            <div className="absolute top-4 -left-1 w-1 h-1 bg-white rounded-full" />
+            <div className="absolute top-8 -left-10 w-10 h-px bg-white/40" />
+            <div className="absolute top-8 -left-1 w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_10px_rgba(96,165,250,0.8)]" />
         </div>
     );
 
@@ -65,12 +52,14 @@ const HUDOverlay = ({ mode, recognitionResult }) => {
                     </div>
                 </div>
 
-                {/* Tracking Tag */}
-                {recognitionResult && (
-                    <div style={getTagStyle()}>
-                        <TagContent />
-                    </div>
-                )}
+                {/* Tracking Tags */}
+                {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => (
+                    result.position && (
+                        <div key={index} style={getTagStyle(result.position)}>
+                            <TagContent result={result} />
+                        </div>
+                    )
+                ))}
             </div>
         );
     }
@@ -101,18 +90,20 @@ const HUDOverlay = ({ mode, recognitionResult }) => {
                 <div className="w-2 h-2 bg-white rounded-full shadow-lg" />
             </div>
 
-            {/* Tracking Tag - Minimal for Ray-Ban */}
-            {recognitionResult && (
-                <div style={getTagStyle()}>
-                    <div className="bg-black/40 backdrop-blur-md p-3 rounded-lg border border-white/20 text-white shadow-xl">
-                        <div className="text-lg font-serif font-bold">{recognitionResult.name}</div>
-                        <div className="text-sm font-serif opacity-80">{recognitionResult.relation}</div>
+            {/* Tracking Tags - Minimal for Ray-Ban */}
+            {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => (
+                result.position && (
+                    <div key={index} style={getTagStyle(result.position)}>
+                        <div className="bg-black/40 backdrop-blur-xl p-4 rounded-xl border border-white/20 text-white shadow-2xl">
+                            <div className="text-2xl font-serif font-bold">{result.name}</div>
+                            <div className="text-base font-serif opacity-80">{result.relation}</div>
+                        </div>
+                        {/* Connecting Line */}
+                        <div className="absolute top-1/2 -left-8 w-8 h-px bg-white/30" />
+                        <div className="absolute top-1/2 -left-1 w-1.5 h-1.5 bg-white rounded-full" />
                     </div>
-                    {/* Connecting Line */}
-                    <div className="absolute top-1/2 -left-8 w-8 h-px bg-white/30" />
-                    <div className="absolute top-1/2 -left-1 w-1 h-1 bg-white rounded-full" />
-                </div>
-            )}
+                )
+            ))}
         </div>
     );
 };

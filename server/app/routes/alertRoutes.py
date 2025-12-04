@@ -77,6 +77,14 @@ def mark_alert_read(
     db.refresh(alert)
     return alert
 
+@router.get("/unread-count", response_model=Dict[str, int])
+def get_unread_count(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    count = db.query(Alert).filter(Alert.user_id == current_user.id, Alert.read == False).count()
+    return {"count": count}
+
 @router.put("/read-all", response_model=Dict[str, int])
 def mark_all_read(
     db: Session = Depends(get_db),

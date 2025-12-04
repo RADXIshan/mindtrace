@@ -21,6 +21,7 @@ class ReminderBase(BaseModel):
     time: str
     recurrence: str = "daily"
     notes: Optional[str] = None
+    enabled: Optional[bool] = True
 
 class ReminderCreate(ReminderBase):
     pass
@@ -33,6 +34,8 @@ class ReminderResponse(ReminderBase):
     user_id: int
     completed: bool
     date: datetime
+    last_triggered: Optional[datetime] = None
+    enabled: bool
 
     class Config:
         from_attributes = True
@@ -117,3 +120,13 @@ def delete_reminder(
     db.delete(db_reminder)
     db.commit()
     return {"message": "Reminder deleted successfully"}
+
+@router.post("/check-now")
+async def check_reminders_now(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Manually trigger reminder check (useful for testing)"""
+    from ..scheduler import scheduler
+    await scheduler.check_reminders()
+    return {"message": "Reminder check triggered"}

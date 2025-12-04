@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HelpCircle, Book, MessageCircle, Mail, Phone, FileText, Video, Search, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { HelpCircle, Mail, Phone, Search, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 const HelpSupport = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,27 +40,6 @@ const HelpSupport = () => {
     }
   ];
 
-  const resources = [
-    {
-      icon: Book,
-      title: 'User Guide',
-      description: 'Complete documentation and tutorials',
-      link: '#'
-    },
-    {
-      icon: Video,
-      title: 'Video Tutorials',
-      description: 'Step-by-step video guides',
-      link: '#'
-    },
-    {
-      icon: FileText,
-      title: 'API Documentation',
-      description: 'For developers and integrations',
-      link: '#'
-    }
-  ];
-
   const filteredFaqs = faqs.filter(faq =>
     faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
     faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
@@ -92,22 +71,8 @@ const HelpSupport = () => {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
         {/* Contact Support */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg transition-all cursor-pointer">
-          <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center mb-4">
-            <MessageCircle className="h-6 w-6 text-indigo-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Live Chat</h3>
-          <p className="text-gray-600 text-sm mb-4">
-            Chat with our support team in real-time
-          </p>
-          <button className="text-indigo-600 font-medium text-sm hover:text-indigo-700 flex items-center gap-1">
-            Start Chat
-            <ExternalLink className="h-4 w-4" />
-          </button>
-        </div>
-
         <div className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg transition-all cursor-pointer">
           <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center mb-4">
             <Mail className="h-6 w-6 text-purple-600" />
@@ -134,31 +99,6 @@ const HelpSupport = () => {
             (555) 123-4567
             <ExternalLink className="h-4 w-4" />
           </a>
-        </div>
-      </div>
-
-      {/* Resources */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Resources</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          {resources.map((resource, index) => {
-            const Icon = resource.icon;
-            return (
-              <a
-                key={index}
-                href={resource.link}
-                className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
-                  <Icon className="h-5 w-5 text-gray-700" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1">{resource.title}</h3>
-                  <p className="text-sm text-gray-600">{resource.description}</p>
-                </div>
-              </a>
-            );
-          })}
         </div>
       </div>
 

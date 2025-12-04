@@ -1,10 +1,13 @@
+import { useState, useEffect } from 'react';
 import { Home, Clock, Users, Bell, Calendar, AlertTriangle, Settings, HelpCircle, X, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { logout } from '../services/auth';
+import { userApi } from '../services/api';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [profile, setProfile] = useState(null);
 
   const navItems = [
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
@@ -20,6 +23,29 @@ const Sidebar = ({ isOpen, onClose }) => {
     { icon: HelpCircle, label: 'Help & Support', path: '/dashboard/help' },
   ];
 
+  // Fetch user profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await userApi.getProfile();
+        setProfile(response.data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+    fetchProfile();
+
+    // Listen for profile updates
+    const handleProfileUpdate = (event) => {
+      setProfile(event.detail);
+    };
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, []);
+
   const handleNavigation = (path) => {
     navigate(path);
     if (onClose) onClose();
@@ -30,6 +56,22 @@ const Sidebar = ({ isOpen, onClose }) => {
       return location.pathname === '/dashboard';
     }
     return location.pathname.startsWith(path);
+  };
+
+  const getInitials = () => {
+    if (!profile) return 'U';
+    if (profile.full_name) {
+      return profile.full_name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    if (profile.email) {
+      return profile.email[0].toUpperCase();
+    }
+    return 'U';
   };
 
   return (
@@ -128,15 +170,28 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* User Profile Section */}
         <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-              JD
+          <button
+            onClick={() => handleNavigation('/dashboard/settings')}
+            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            {profile?.profile_image_url ? (
+              <img
+                src={profile.profile_image_url}
+                alt="Profile"
+                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                {getInitials()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {profile?.full_name || 'User'}
+              </p>
+              <p className="text-xs text-gray-500 truncate">{profile?.email || 'user@gmail.com' }</p>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">John Doe</p>
-              <p className="text-xs text-gray-500 truncate">Caregiver</p>
-            </div>
-          </div>
+          </button>
         </div>
       </aside>
     </>

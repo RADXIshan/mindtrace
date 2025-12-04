@@ -53,6 +53,7 @@ export const alertsApi = {
   create: (data) => api.post('/alerts/', data),
   markRead: (id) => api.put(`/alerts/${id}/read`),
   markAllRead: () => api.put('/alerts/read-all'),
+  getUnreadCount: () => api.get('/alerts/unread-count'),
 };
 
 export const remindersApi = {
@@ -69,6 +70,19 @@ export const sosApi = {
   deleteContact: (id) => api.delete(`/sos/contacts/${id}`),
   getConfig: () => api.get('/sos/config'),
   updateConfig: (data) => api.put('/sos/config', data),
+};
+
+export const userApi = {
+  getProfile: () => api.get('/user/profile'),
+  updateProfile: (data) => api.put('/user/profile', data),
+  changePassword: (data) => api.post('/user/change-password', data),
+  deleteAccount: () => api.delete('/user/account'),
+  uploadProfileImage: (formData) => api.post('/user/profile-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  deleteProfileImage: () => api.delete('/user/profile-image'),
 };
 
 export default api;

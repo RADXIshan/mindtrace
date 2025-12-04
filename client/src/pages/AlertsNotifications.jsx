@@ -35,6 +35,8 @@ const AlertsNotifications = () => {
     try {
       await alertsApi.markRead(id);
       setAlerts(alerts.map(a => a.id === id ? { ...a, read: true } : a));
+      // Trigger refresh of unread count in header
+      window.dispatchEvent(new Event('refreshUnreadCount'));
     } catch (error) {
       console.error("Error marking alert as read:", error);
     }
@@ -45,6 +47,8 @@ const AlertsNotifications = () => {
       await alertsApi.markAllRead();
       setAlerts(alerts.map(a => ({ ...a, read: true })));
       toast.success("All alerts marked as read");
+      // Trigger refresh of unread count in header
+      window.dispatchEvent(new Event('refreshUnreadCount'));
     } catch (error) {
       console.error("Error marking all read:", error);
       toast.error("Failed to update alerts");

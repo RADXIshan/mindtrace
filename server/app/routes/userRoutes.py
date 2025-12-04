@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
-import os
-import shutil
+import base64
 
 from ..database import get_db
 from ..models import User
@@ -15,15 +14,6 @@ router = APIRouter(
     tags=["User Profile"],
     responses={404: {"description": "Not found"}},
 )
-
-def get_profile_image_url(profile_image: Optional[str], request: Request) -> Optional[str]:
-    """Convert file path to URL"""
-    if not profile_image or not os.path.exists(profile_image):
-        return None
-    
-    filename = os.path.basename(profile_image)
-    base_url = str(request.base_url).rstrip('/')
-    return f"{base_url}/static/profile_images/{filename}"
 
 # Pydantic models
 class UserProfileResponse(BaseModel):
@@ -46,20 +36,27 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
-@router.get("/profile", response_model=UserProfileResponse)
+@router.get("/profile")
 def get_user_profile(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Get current user's profile information"""
-    profile_dict = UserProfileResponse.from_orm(current_user).dict()
-    profile_dict['profile_image_url'] = get_profile_image_url(current_user.profile_image, request)
-    return profile_dict
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "profile_image": current_user.profile_image,
+        "profile_image_url": current_user.profile_image,  # Base64 data URL
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at
+    }
 
-@router.put("/profile", response_model=UserProfileResponse)
+@router.put("/profile")
 def update_user_profile(
     profile_update: UserProfileUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -80,7 +77,16 @@ def update_user_profile(
     
     db.commit()
     db.refresh(current_user)
-    return current_user
+    
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "profile_image": current_user.profile_image,
+        "profile_image_url": current_user.profile_image,  # Base64 data URL
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at
+    }
 
 @router.post("/change-password")
 def change_password(
@@ -128,36 +134,44 @@ async def upload_profile_image(
 ):
     """Upload or update user profile image"""
     try:
-        # Create directory for profile images
-        BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        IMAGES_DIR = os.path.join(BASE_DIR, "static", "profile_images")
-        os.makedirs(IMAGES_DIR, exist_ok=True)
+        # Validate file type
+        if not photo.content_type.startswith('image/'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File must be an image"
+            )
         
-        # Delete old profile image if exists
-        if current_user.profile_image and os.path.exists(current_user.profile_image):
-            try:
-                os.remove(current_user.profile_image)
-            except Exception as e:
-                print(f"Error deleting old profile image: {e}")
+        # Read the image file
+        image_data = await photo.read()
         
-        # Save the new photo with a unique name
-        file_extension = os.path.splitext(photo.filename)[1]
-        photo_filename = f"user_{current_user.id}{file_extension}"
-        photo_path = os.path.join(IMAGES_DIR, photo_filename)
+        # Validate file size (max 5MB)
+        if len(image_data) > 5 * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Image size must be less than 5MB"
+            )
         
-        with open(photo_path, "wb") as buffer:
-            shutil.copyfileobj(photo.file, buffer)
+        # Convert to base64 data URL
+        base64_data = base64.b64encode(image_data).decode('utf-8')
+        data_url = f"data:{photo.content_type};base64,{base64_data}"
         
-        # Update user profile image path
-        current_user.profile_image = photo_path
+        # Update user profile image
+        current_user.profile_image = data_url
         db.commit()
         db.refresh(current_user)
         
-        profile_dict = UserProfileResponse.from_orm(current_user).dict()
-        profile_dict['profile_image_url'] = get_profile_image_url(current_user.profile_image, request)
+        return {
+            "id": current_user.id,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "profile_image": current_user.profile_image,
+            "profile_image_url": current_user.profile_image,  # Base64 data URL
+            "is_active": current_user.is_active,
+            "created_at": current_user.created_at
+        }
         
-        return profile_dict
-        
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error uploading profile image: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -170,19 +184,20 @@ def delete_profile_image(
 ):
     """Delete user profile image"""
     try:
-        # Delete the file if it exists
-        if current_user.profile_image and os.path.exists(current_user.profile_image):
-            os.remove(current_user.profile_image)
-        
-        # Clear the profile image path
+        # Clear the profile image
         current_user.profile_image = None
         db.commit()
         db.refresh(current_user)
         
-        profile_dict = UserProfileResponse.from_orm(current_user).dict()
-        profile_dict['profile_image_url'] = None
-        
-        return profile_dict
+        return {
+            "id": current_user.id,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "profile_image": None,
+            "profile_image_url": None,
+            "is_active": current_user.is_active,
+            "created_at": current_user.created_at
+        }
         
     except Exception as e:
         print(f"Error deleting profile image: {e}")

@@ -25,21 +25,21 @@ def load_models():
 
 def detect_and_embed(app, image):
     """
-    Detect the dominant face and return its embedding vector.
+    Detect all faces and return their embedding vectors.
     """
     # InsightFace expects BGR image (OpenCV format)
     faces = app.get(image)
     if len(faces) == 0:
-        return None
+        return []
     
-    # Find the largest face by area
-    main_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
-    embedding = main_face.embedding.tolist()
+    results = []
+    for face in faces:
+        results.append({
+            "embedding": face.embedding.tolist(),
+            "bbox": face.bbox.tolist()
+        })
     
-    return {
-        "embedding": embedding,
-        "bbox": main_face.bbox.tolist()
-    }
+    return results
 
 def register_profile(app, name, relation, image_path):
     """
@@ -50,15 +50,19 @@ def register_profile(app, name, relation, image_path):
         print(f"Error: Could not read image at {image_path}")
         return False
 
-    data = detect_and_embed(app, img)
-    if not data:
+    # For registration, we still want the main face (largest)
+    faces = app.get(img)
+    if len(faces) == 0:
         print(f"Error: No face detected in {image_path}")
         return False
+    
+    # Find the largest face by area
+    main_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
     
     new_profile = {
         "name": name,
         "relation": relation,
-        "embedding": data["embedding"]
+        "embedding": main_face.embedding.tolist()
     }
 
     # Ensure profiles directory exists
@@ -96,15 +100,13 @@ def cosine_similarity(a, b):
 
 def recognize_face(app, image, threshold=0.45):
     """
-    Compare input face embedding to stored embeddings using cosine similarity.
+    Compare input face embeddings to stored embeddings using cosine similarity.
+    Returns a list of recognition results.
     """
-    # Get embedding and bbox for the current input
-    result = detect_and_embed(app, image)
-    if not result:
-        return None
-
-    current_emb = result["embedding"]
-    current_bbox = result["bbox"]
+    # Get embedding and bbox for all faces
+    detected_faces = detect_and_embed(app, image)
+    if not detected_faces:
+        return []
 
     # Load stored profiles
     try:
@@ -116,35 +118,42 @@ def recognize_face(app, image, threshold=0.45):
     except:
         profiles = []
 
-    best_match = None
-    best_score = -1
+    results = []
 
-    for profile in profiles:
-        score = cosine_similarity(current_emb, profile["embedding"])
-        if score > best_score:
-            best_score = score
-            best_match = profile
+    for face_data in detected_faces:
+        current_emb = face_data["embedding"]
+        current_bbox = face_data["bbox"]
 
-    if best_score < threshold:
-        return {
-            "name": "Unknown", 
-            "relation": "Unknown", 
-            "confidence": float(best_score),
-            "bbox": current_bbox
-        }
+        best_match = None
+        best_score = -1
 
-    result = {
-        "name": best_match["name"],
-        "relation": best_match["relation"],
-        "confidence": float(best_score),
-        "bbox": current_bbox
-    }
+        for profile in profiles:
+            score = cosine_similarity(current_emb, profile["embedding"])
+            if score > best_score:
+                best_score = score
+                best_match = profile
+
+        if best_score < threshold:
+            results.append({
+                "name": "Unknown", 
+                "relation": "Unknown", 
+                "confidence": float(best_score),
+                "bbox": current_bbox
+            })
+        else:
+            match_result = {
+                "name": best_match["name"],
+                "relation": best_match["relation"],
+                "confidence": float(best_score),
+                "bbox": current_bbox
+            }
+            # Include contact_id if available
+            if "contact_id" in best_match:
+                match_result["contact_id"] = best_match["contact_id"]
+            
+            results.append(match_result)
     
-    # Include contact_id if available
-    if "contact_id" in best_match:
-        result["contact_id"] = best_match["contact_id"]
-    
-    return result
+    return results
 
 def sync_embeddings_from_db(app, db_session):
     """
@@ -173,10 +182,13 @@ def sync_embeddings_from_db(app, db_session):
             continue
         
         # Extract embedding
-        data = detect_and_embed(app, img)
-        if not data:
+        data_list = detect_and_embed(app, img)
+        if not data_list:
             print(f"Error: No face detected for {contact.name}")
             continue
+        
+        # Use the first detected face for the profile
+        data = data_list[0]
         
         # Add to embeddings database
         embeddings_db.append({

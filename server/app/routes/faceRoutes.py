@@ -65,21 +65,19 @@ async def recognize_face_endpoint(
 
         result = recognize_face(face_app, img)
         
-        # If a contact is recognized, update their last_seen timestamp
-        # Note: This works without authentication for glass-client compatibility
-        if result and result.get("name") != "Unknown" and "contact_id" in result:
-            contact = db.query(Contact).filter(
-                Contact.id == result["contact_id"]
-            ).first()
-            if contact:
-                from datetime import datetime
-                contact.last_seen = datetime.now()
-                db.commit()
-        
+        # If contacts are recognized, update their last_seen timestamp
         if result:
-            return JSONResponse(content=result, status_code=200)
-        else:
-            return JSONResponse(content={"name": "Unknown", "relation": "Unknown", "confidence": 0.0}, status_code=200)
+            for res in result:
+                if res.get("name") != "Unknown" and "contact_id" in res:
+                    contact = db.query(Contact).filter(
+                        Contact.id == res["contact_id"]
+                    ).first()
+                    if contact:
+                        from datetime import datetime
+                        contact.last_seen = datetime.now()
+            db.commit()
+        
+        return JSONResponse(content=result, status_code=200)
 
     except Exception as e:
         print(f"Error in recognize_face_endpoint: {e}")

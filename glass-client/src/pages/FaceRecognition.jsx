@@ -107,20 +107,32 @@ const FaceRecognition = () => {
 
             try {
                 const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/face/recognize`, formData);
-                if (response.data && response.data.name !== "Unknown") {
-                    const result = response.data;
-                    if (result.bbox) {
-                        result.position = calculatePosition(result.bbox);
-                    }
+                const data = response.data;
+
+                // Handle both single object (legacy) and array (new)
+                const results = Array.isArray(data) ? data : [data];
+
+                const validResults = results.filter(r => r && r.name !== "Unknown");
+
+                if (validResults.length > 0) {
+                    const processedResults = validResults.map(result => {
+                        if (result.bbox) {
+                            return {
+                                ...result,
+                                position: calculatePosition(result.bbox)
+                            };
+                        }
+                        return result;
+                    });
 
                     // Clear any pending timeout to hide the result
                     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-                    setRecognitionResult(result);
+                    setRecognitionResult(processedResults);
 
                     // Set a new timeout to clear the result if no new detection occurs
                     timeoutRef.current = setTimeout(() => {
-                        setRecognitionResult(null);
+                        setRecognitionResult([]);
                         timeoutRef.current = null;
                     }, 2000);
                 }

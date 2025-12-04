@@ -198,9 +198,9 @@ const FaceRecognition = () => {
             <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 transition-opacity duration-300 ${mode === 'rayban' ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
                 <button
                     onClick={() => setMode('standard')}
-                    className={`p-4 rounded-full backdrop-blur-md border transition-all ${mode === 'standard'
-                        ? 'bg-white/20 border-white text-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                        : 'bg-black/40 border-white/10 text-white/60 hover:bg-black/60'
+                    className={`p-4 rounded-2xl backdrop-blur-md border transition-all ${mode === 'standard'
+                        ? 'bg-white text-indigo-600 border-white shadow-lg scale-110'
+                        : 'bg-white/20 border-white/30 text-white hover:bg-white/30'
                         }`}
                     title="Standard View"
                 >
@@ -209,9 +209,9 @@ const FaceRecognition = () => {
 
                 <button
                     onClick={() => setMode('rayban')}
-                    className={`p-4 rounded-full backdrop-blur-md border transition-all ${mode === 'rayban'
-                        ? 'bg-white/20 border-white text-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                        : 'bg-black/40 border-white/10 text-white/60 hover:bg-black/60'
+                    className={`p-4 rounded-2xl backdrop-blur-md border transition-all ${mode === 'rayban'
+                        ? 'bg-white text-indigo-600 border-white shadow-lg scale-110'
+                        : 'bg-white/20 border-white/30 text-white hover:bg-white/30'
                         }`}
                     title="Ray-Ban Meta Mode"
                 >

@@ -48,54 +48,8 @@ def detect_and_embed(app, image):
     
     return results
 
-def register_profile(app, name, relation, image_path):
-    """
-    Take an image of a family member, extract embedding, and save to embeddings.json.
-    """
-    img = cv2.imread(image_path)
-    if img is None:
-        print(f"Error: Could not read image at {image_path}")
-        return False
-
-    # For registration, we still want the main face (largest)
-    faces = app.get(img)
-    if len(faces) == 0:
-        print(f"Error: No face detected in {image_path}")
-        return False
-    
-    # Find the largest face by area
-    main_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
-    
-    new_profile = {
-        "name": name,
-        "relation": relation,
-        "embedding": main_face.embedding.tolist()
-    }
-
-    # Ensure profiles directory exists
-    os.makedirs(PROFILES_DIR, exist_ok=True)
-
-    # Append to embeddings.json
-    try:
-        if os.path.exists(EMBEDDINGS_FILE):
-            with open(EMBEDDINGS_FILE, "r") as f:
-                db = json.load(f)
-        else:
-            db = []
-    except Exception as e:
-        print(f"Error loading database: {e}")
-        db = []
-
-    db.append(new_profile)
-
-    try:
-        with open(EMBEDDINGS_FILE, "w") as f:
-            json.dump(db, f, indent=4)
-    except Exception as e:
-        print(f"Error saving database: {e}")
-        return False
-
-    return True
+# Removed register_profile function - profiles are now only registered through database contacts
+# Use sync_embeddings_from_db() to sync from database
 
 def cosine_similarity(a, b):
     a, b = np.array(a), np.array(b)
@@ -165,7 +119,8 @@ def recognize_face(app, image, threshold=0.45):
 def sync_embeddings_from_db(app, db_session):
     """
     Sync face embeddings from database contacts with profile photos.
-    This replaces the embeddings.json with data from the database.
+    This is the ONLY way to register faces - all photos must be added through the contacts page.
+    This function replaces the embeddings.json with data from the database.
     """
     from app.models import Contact
     

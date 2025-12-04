@@ -3,7 +3,7 @@ name = "server"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.10.*"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "albucore==0.0.24",
     "albumentations==2.0.8",
@@ -67,6 +67,3 @@ dependencies = [
     "uvicorn>=0.38.0",
     "wcwidth==0.2.14",
 ]
-
-[tool.uv.sources]
-insightface = { url = "https://github.com/Gourieff/Assets/raw/main/Insightface/insightface-0.7.3-cp310-cp310-win_amd64.whl" }

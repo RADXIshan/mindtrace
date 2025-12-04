@@ -12,6 +12,7 @@ class User(Base):
     reset_token = Column(String, nullable=True)
     reset_token_expires = Column(DateTime(timezone=True), nullable=True)
     full_name = Column(String, nullable=True)
+    profile_image = Column(String, nullable=True)  # Path to profile image
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

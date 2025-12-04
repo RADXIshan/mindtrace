@@ -77,6 +77,12 @@ export const userApi = {
   updateProfile: (data) => api.put('/user/profile', data),
   changePassword: (data) => api.post('/user/change-password', data),
   deleteAccount: () => api.delete('/user/account'),
+  uploadProfileImage: (formData) => api.post('/user/profile-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  deleteProfileImage: () => api.delete('/user/profile-image'),
 };
 
 export default api;

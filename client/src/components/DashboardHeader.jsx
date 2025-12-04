@@ -24,6 +24,16 @@ const DashboardHeader = ({ onMenuClick }) => {
       }
     };
     fetchProfile();
+
+    // Listen for profile updates
+    const handleProfileUpdate = (event) => {
+      setProfile(event.detail);
+    };
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
   }, []);
 
   // Fetch unread alerts count
@@ -150,10 +160,20 @@ const DashboardHeader = ({ onMenuClick }) => {
           <div className="hidden md:flex items-center gap-3 pl-4 border-l border-gray-200">
             <button
               onClick={() => navigate('/dashboard/settings')}
-              className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm hover:shadow-lg transition-all duration-200 hover:scale-105"
+              className="hover:shadow-lg transition-all duration-200 hover:scale-105"
               title={profile?.full_name || profile?.email || 'Profile Settings'}
             >
-              {getInitials()}
+              {profile?.profile_image_url ? (
+                <img
+                  src={profile.profile_image_url}
+                  alt="Profile"
+                  className="w-9 h-9 rounded-full object-cover border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                  {getInitials()}
+                </div>
+              )}
             </button>
             <button
               onClick={logout}

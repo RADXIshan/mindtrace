@@ -34,6 +34,16 @@ const Sidebar = ({ isOpen, onClose }) => {
       }
     };
     fetchProfile();
+
+    // Listen for profile updates
+    const handleProfileUpdate = (event) => {
+      setProfile(event.detail);
+    };
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
   }, []);
 
   const handleNavigation = (path) => {
@@ -164,9 +174,17 @@ const Sidebar = ({ isOpen, onClose }) => {
             onClick={() => handleNavigation('/dashboard/settings')}
             className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
           >
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-              {getInitials()}
-            </div>
+            {profile?.profile_image_url ? (
+              <img
+                src={profile.profile_image_url}
+                alt="Profile"
+                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                {getInitials()}
+              </div>
+            )}
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-semibold text-gray-900 truncate">
                 {profile?.full_name || 'User'}

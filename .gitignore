@@ -9,3 +9,9 @@ __pycache__/
 *.so
 .Python
 
+# User uploaded files
+server/static/profile_images/*
+!server/static/profile_images/.gitkeep
+server/ai_engine/profiles/images/*
+!server/ai_engine/profiles/images/.gitkeep
+

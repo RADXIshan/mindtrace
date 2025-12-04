@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Calendar, Clock, CheckCircle2, Circle, Trash2, Edit2, Filter } from 'lucide-react';
+import { Plus, Clock, CheckCircle2, Circle, Trash2, Bell, Filter, X } from 'lucide-react';
 import AddReminderModal from '../components/AddReminderModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { remindersApi } from '../services/api';
@@ -11,6 +11,10 @@ const Reminders = () => {
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, reminderId: null, reminderTitle: '' });
+  const [showTip, setShowTip] = useState(() => {
+    const savedPreference = localStorage.getItem('showReminderTip');
+    return savedPreference !== 'false';
+  });
 
   const fetchReminders = async () => {
     try {
@@ -58,6 +62,11 @@ const Reminders = () => {
   const handleAddReminder = () => {
     // Refresh the reminders list after adding
     fetchReminders();
+  };
+
+  const handleDismissTip = () => {
+    setShowTip(false);
+    localStorage.setItem('showReminderTip', 'false');
   };
 
   const reminderTypes = [
@@ -190,20 +199,29 @@ const Reminders = () => {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-indigo-50 rounded-2xl border border-indigo-200 p-6 mb-6">
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-            <Bell className="h-5 w-5 text-indigo-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-1">Smart Reminder Alerts</h3>
-            <p className="text-sm text-gray-600">
-              Reminders automatically create alerts at their scheduled time. Daily reminders reset each day, 
-              weekly reminders trigger on the same day each week, and weekday reminders only trigger Monday-Friday.
-            </p>
+      {showTip && (
+        <div className="bg-indigo-50 rounded-2xl border border-indigo-200 p-6 mb-6">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+              <Bell className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 mb-1">Smart Reminder Alerts</h3>
+              <p className="text-sm text-gray-600">
+                Reminders automatically create alerts at their scheduled time. Daily reminders reset each day, 
+                weekly reminders trigger on the same day each week, and weekday reminders only trigger Monday-Friday.
+              </p>
+            </div>
+            <button
+              onClick={handleDismissTip}
+              className="p-1 hover:bg-indigo-100 rounded-lg transition-colors shrink-0"
+              aria-label="Dismiss tip"
+            >
+              <X className="h-5 w-5 text-indigo-600" />
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">

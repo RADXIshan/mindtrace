@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { User, Lock, Shield, Trash2, Save, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Shield, Trash2, Save, AlertCircle, CheckCircle, Eye, EyeOff, Camera, X as XIcon } from 'lucide-react';
 import { userApi } from '../services/api';
 import UnsavedChangesModal from '../components/UnsavedChangesModal';
 
@@ -12,12 +12,16 @@ const ProfileSettings = () => {
     full_name: '',
     email: '',
     created_at: null,
+    profile_image_url: null,
   });
   
   const [originalProfile, setOriginalProfile] = useState({
     full_name: '',
     email: '',
   });
+
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -102,6 +106,9 @@ const ProfileSettings = () => {
         full_name: response.data.full_name || '',
         email: response.data.email || '',
       });
+      
+      // Dispatch event to update sidebar and header
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: response.data }));
     } catch (error) {
       console.error('Error fetching profile:', error);
       setMessage({ type: 'error', text: 'Failed to load profile' });
@@ -225,6 +232,73 @@ const ProfileSettings = () => {
         type: 'error', 
         text: error.response?.data?.detail || 'Failed to delete account' 
       });
+    }
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Please select an image file' });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image size must be less than 5MB' });
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setMessage({ type: '', text: '' });
+
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const response = await userApi.uploadProfileImage(formData);
+      setProfile(response.data);
+      setMessage({ type: 'success', text: 'Profile image updated successfully!' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+
+      // Dispatch event to update sidebar and header
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: response.data }));
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.detail || 'Failed to upload image' 
+      });
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    try {
+      setUploadingImage(true);
+      setMessage({ type: '', text: '' });
+
+      const response = await userApi.deleteProfileImage();
+      setProfile(response.data);
+      setMessage({ type: 'success', text: 'Profile image removed successfully!' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+
+      // Dispatch event to update sidebar and header
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: response.data }));
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.detail || 'Failed to delete image' 
+      });
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -372,10 +446,67 @@ const ProfileSettings = () => {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile Picture</h2>
             <div className="flex flex-col items-center">
-              <div className="w-32 h-32 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-4xl font-bold mb-4">
-                {profile.full_name ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : profile.email ? profile.email[0].toUpperCase() : 'U'}
+              <div className="relative group">
+                {profile.profile_image_url ? (
+                  <img
+                    src={profile.profile_image_url}
+                    alt="Profile"
+                    className="w-32 h-32 rounded-full object-cover border-4 border-gray-100"
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-4xl font-bold">
+                    {profile.full_name ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : profile.email ? profile.email[0].toUpperCase() : 'U'}
+                  </div>
+                )}
+                {uploadingImage && (
+                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-gray-500 text-center">Profile picture coming soon</p>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              
+              <div className="mt-4 flex gap-2">
+                {profile.profile_image_url ? (
+                  <>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImage}
+                      className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <Camera className="h-4 w-4" />
+                      Update
+                    </button>
+                    <button
+                      onClick={handleDeleteImage}
+                      disabled={uploadingImage}
+                      className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <XIcon className="h-4 w-4" />
+                      Delete
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Upload Photo
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                JPG, PNG or GIF (max 5MB)
+              </p>
             </div>
           </div>
 

@@ -67,11 +67,14 @@ app.add_middleware(
 
 app.add_middleware(SessionMiddleware,secret_key=SECRET_KEY)
 
-# Mount static files for profile photos
+# Mount static files for profile photos and profile images
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PHOTOS_DIR = os.path.join(BASE_DIR, "ai_engine", "profiles", "images")
+PROFILE_IMAGES_DIR = os.path.join(BASE_DIR, "static", "profile_images")
 os.makedirs(PHOTOS_DIR, exist_ok=True)
+os.makedirs(PROFILE_IMAGES_DIR, exist_ok=True)
 app.mount("/static/photos", StaticFiles(directory=PHOTOS_DIR), name="photos")
+app.mount("/static/profile_images", StaticFiles(directory=PROFILE_IMAGES_DIR), name="profile_images")
 
 app.include_router(auth_router)
 app.include_router(face_router, prefix="/face", tags=["Face Recognition"])

@@ -30,17 +30,6 @@ const FaceRecognition = () => {
         }
     };
 
-    useEffect(() => {
-        startCamera();
-        startRecognitionLoop();
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            if (videoRef.current && videoRef.current.srcObject) {
-                videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, []);
-
     const captureFrame = () => {
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
@@ -101,6 +90,7 @@ const FaceRecognition = () => {
 
     const startRecognitionLoop = () => {
         if (intervalRef.current) clearInterval(intervalRef.current);
+        setDebugStatus("Loop Started");
 
         intervalRef.current = setInterval(async () => {
             if (!videoRef.current) {
@@ -130,6 +120,7 @@ const FaceRecognition = () => {
             formData.append('file', blob, 'frame.jpg');
 
             try {
+                // setDebugStatus("Sending..."); // Optional: might flicker too much
                 const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/face/recognize`, formData);
                 const data = response.data;
 
@@ -169,6 +160,17 @@ const FaceRecognition = () => {
             }
         }, 200); // Increased frequency for smoother tracking (5fps)
     };
+
+    useEffect(() => {
+        startCamera();
+        startRecognitionLoop();
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            if (videoRef.current && videoRef.current.srcObject) {
+                videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
 
     return (
         <div className="relative h-screen w-screen overflow-hidden bg-black">

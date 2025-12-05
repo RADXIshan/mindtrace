@@ -93,3 +93,26 @@ def mark_all_read(
     result = db.query(Alert).filter(Alert.user_id == current_user.id, Alert.read == False).update({"read": True})
     db.commit()
     return {"updated_count": result}
+
+@router.delete("/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_alert(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    alert = db.query(Alert).filter(Alert.id == alert_id, Alert.user_id == current_user.id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    
+    db.delete(alert)
+    db.commit()
+    return None
+
+@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
+def delete_all_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db.query(Alert).filter(Alert.user_id == current_user.id).delete()
+    db.commit()
+    return None

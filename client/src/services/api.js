@@ -69,6 +69,8 @@ export const alertsApi = {
   markRead: (id) => api.put(`/alerts/${id}/read`),
   markAllRead: () => api.put('/alerts/read-all'),
   getUnreadCount: () => api.get('/alerts/unread-count'),
+  delete: (id) => api.delete(`/alerts/${id}`),
+  deleteAll: () => api.delete('/alerts/'),
 };
 
 export const remindersApi = {
@@ -106,6 +108,10 @@ export const userApi = {
     },
   }),
   deleteProfileImage: () => api.delete('/user/profile-image'),
+};
+
+export const searchApi = {
+  search: (query) => api.get('/search', { params: { q: query } }),
 };
 
 export default api;

@@ -5,6 +5,7 @@ import AddContactModal from '../components/AddContactModal';
 import AddReminderModal from '../components/AddReminderModal';
 import { interactionsApi, remindersApi, alertsApi, userApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { formatTime12Hour } from '../utils/timeFormat';
 
 const DashboardHome = () => {
   const navigate = useNavigate();
@@ -281,7 +282,7 @@ const DashboardHome = () => {
                     <p className={`text-sm font-medium ${reminder.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
                       {reminder.title}
                     </p>
-                    <p className="text-xs text-gray-500">{reminder.time}</p>
+                    <p className="text-xs text-gray-500">{formatTime12Hour(reminder.time)}</p>
                   </div>
                 </div>
               ))

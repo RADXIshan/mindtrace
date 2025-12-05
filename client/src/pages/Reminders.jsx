@@ -4,6 +4,7 @@ import AddReminderModal from '../components/AddReminderModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import { remindersApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { formatTime12Hour } from '../utils/timeFormat';
 
 const Reminders = () => {
   const [selectedType, setSelectedType] = useState('all');
@@ -98,21 +99,18 @@ const Reminders = () => {
   const groupedReminders = {
     morning: reminders.filter(r => {
       const hour = parseInt(r.time.split(':')[0]);
-      const isPM = r.time.includes('PM');
-      const time24 = isPM && hour !== 12 ? hour + 12 : (hour === 12 && !isPM ? 0 : hour);
-      return time24 >= 5 && time24 < 12;
+      // Time is in 24-hour format from backend
+      return hour >= 5 && hour < 12;
     }),
     afternoon: reminders.filter(r => {
       const hour = parseInt(r.time.split(':')[0]);
-      const isPM = r.time.includes('PM');
-      const time24 = isPM && hour !== 12 ? hour + 12 : (hour === 12 && !isPM ? 0 : hour);
-      return time24 >= 12 && time24 < 17;
+      // Time is in 24-hour format from backend
+      return hour >= 12 && hour < 17;
     }),
     evening: reminders.filter(r => {
       const hour = parseInt(r.time.split(':')[0]);
-      const isPM = r.time.includes('PM');
-      const time24 = isPM && hour !== 12 ? hour + 12 : (hour === 12 && !isPM ? 0 : hour);
-      return time24 >= 17 || time24 < 5;
+      // Time is in 24-hour format from backend
+      return hour >= 17 || hour < 5;
     })
   };
 
@@ -167,7 +165,7 @@ const Reminders = () => {
               reminder.completed ? 'text-gray-400' : 'text-gray-600'
             }`}>
               <Clock className="h-4 w-4" />
-              {reminder.time}
+              {formatTime12Hour(reminder.time)}
             </div>
             <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${
               reminder.completed ? 'bg-gray-100 text-gray-400' : getTypeColor(reminder.type)

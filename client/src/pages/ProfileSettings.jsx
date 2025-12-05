@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { User, Lock, Shield, Trash2, Save, AlertCircle, CheckCircle, Eye, EyeOff, Camera, X as XIcon } from 'lucide-react';
 import { userApi } from '../services/api';
+import toast from 'react-hot-toast';
 import UnsavedChangesModal from '../components/UnsavedChangesModal';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 

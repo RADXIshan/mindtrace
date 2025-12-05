@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Clock, Repeat, Edit2, Trash2, Pill, Utensils, Activity, Droplets, CheckCircle2 } from 'lucide-react';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
+import { formatTime12Hour } from '../utils/timeFormat';
 
 const ViewReminderModal = ({ reminder, onClose, onEdit, onDelete, onToggleComplete }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -23,14 +24,6 @@ const ViewReminderModal = ({ reminder, onClose, onEdit, onDelete, onToggleComple
 
   const Icon = reminderIcons[reminder.type] || Pill;
   const color = reminderColors[reminder.type] || 'blue';
-
-  const formatTime = (time) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
 
   const handleEdit = () => {
     onEdit(reminder);
@@ -100,7 +93,7 @@ const ViewReminderModal = ({ reminder, onClose, onEdit, onDelete, onToggleComple
               <Clock className="h-5 w-5 text-gray-400" />
               <p className="text-sm font-semibold text-gray-900">Time</p>
             </div>
-            <p className="text-lg font-bold text-gray-900 ml-8">{formatTime(reminder.time)}</p>
+            <p className="text-lg font-bold text-gray-900 ml-8">{formatTime12Hour(reminder.time)}</p>
           </div>
 
           {/* Recurrence */}

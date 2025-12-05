@@ -1,18 +1,100 @@
-import { useState, useEffect } from 'react';
-import { Bell, AlertCircle, Info, AlertTriangle, X, Filter } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bell, AlertCircle, Info, AlertTriangle, X, Filter, Trash2, Loader2 } from 'lucide-react';
 import { alertsApi } from '../services/api';
 import toast from 'react-hot-toast';
 
 const AlertsNotifications = () => {
   const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [selectedAlert, setSelectedAlert] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Loading states for actions
+  const [processingAlerts, setProcessingAlerts] = useState(new Set()); // IDs being processed (read/delete)
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  
+  // Refs for tracking alerts state for notifications
+  const previousAlertIds = useRef(new Set());
+  const isFirstLoad = useRef(true);
+  const audioContextRef = useRef(null);
 
-  const fetchAlerts = async () => {
+  // Initialize and unlock AudioContext
+  useEffect(() => {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      audioContextRef.current = new AudioContext();
+    }
+
+    const unlockAudio = () => {
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().then(() => {
+          console.log("AudioContext resumed/unlocked");
+        }).catch(err => console.error("Failed to resume AudioContext:", err));
+      }
+    };
+
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
+
+  // Sound notification function
+  const playNotificationSound = async () => {
     try {
-      setLoading(true);
+      if (!audioContextRef.current) return;
+      const ctx = audioContextRef.current;
+
+      console.log("Playing notification sound, context state:", ctx.state);
+
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      
+      const playBeep = (startTime) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        // Alert sound - fairly high pitch descending
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, startTime); // A5
+        osc.frequency.exponentialRampToValueAtTime(440, startTime + 0.2); // Drop to A4
+        
+        gain.gain.setValueAtTime(0.1, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2);
+        
+        osc.start(startTime);
+        osc.stop(startTime + 0.2);
+      };
+
+      const now = ctx.currentTime;
+      // Play 3 times as requested
+      playBeep(now);
+      playBeep(now + 0.4);
+      playBeep(now + 0.8);
+      
+    } catch (error) {
+      console.error("Failed to play notification sound:", error);
+    }
+  };
+
+  const fetchAlerts = async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
       const params = {
         severity: selectedSeverity !== 'all' ? selectedSeverity : undefined
       };
@@ -22,28 +104,122 @@ const AlertsNotifications = () => {
       console.error("Error fetching alerts:", error);
       toast.error("Failed to load alerts");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
+  // Monitor alerts for changes to trigger sound
   useEffect(() => {
-    fetchAlerts();
+    if (loading) return;
+
+    const currentIds = new Set(alerts.map(a => a.id));
+    
+    if (isFirstLoad.current) {
+      previousAlertIds.current = currentIds;
+      isFirstLoad.current = false;
+      return;
+    }
+
+    // Check for new alerts
+    const hasNewAlerts = alerts.some(alert => !previousAlertIds.current.has(alert.id));
+    
+    if (hasNewAlerts) {
+      playNotificationSound();
+      previousAlertIds.current = currentIds;
+    }
+    
+    // Update ref to current state even if no new ones (e.g. deletions)
+    // Actually we only update if we want to reset the baseline. 
+    // If strict new alerts, we should just add them? 
+    // No, if list refreshes, previousIds should reflect the new list.
+    previousAlertIds.current = currentIds;
+    
+  }, [alerts, loading]);
+
+  // Initial fetch and reset on filter change
+  useEffect(() => {
+    isFirstLoad.current = true;
+    fetchAlerts(true);
+  }, [selectedSeverity]);
+
+  // Polling for new alerts
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchAlerts(false);
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(intervalId);
   }, [selectedSeverity]);
 
   const handleMarkRead = async (e, id) => {
     e.stopPropagation();
+    if (processingAlerts.has(id)) return;
+
     try {
+      setProcessingAlerts(prev => new Set(prev).add(id));
       await alertsApi.markRead(id);
       setAlerts(alerts.map(a => a.id === id ? { ...a, read: true } : a));
       // Trigger refresh of unread count in header
       window.dispatchEvent(new Event('refreshUnreadCount'));
     } catch (error) {
       console.error("Error marking alert as read:", error);
+    } finally {
+      setProcessingAlerts(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (processingAlerts.has(id)) return;
+
+    try {
+      setProcessingAlerts(prev => new Set(prev).add(id));
+      await alertsApi.delete(id);
+      setAlerts(alerts.filter(a => a.id !== id));
+      toast.success("Alert deleted");
+      window.dispatchEvent(new Event('refreshUnreadCount'));
+    } catch (error) {
+      console.error("Error deleting alert:", error);
+      toast.error("Failed to delete alert");
+      // Only remove from processing set if it failed, otherwise it's gone from list
+      setProcessingAlerts(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const handleDeleteAll = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteAll = async () => {
+    try {
+      setIsDeletingAll(true);
+      await alertsApi.deleteAll();
+      setAlerts([]);
+      toast.success("All alerts deleted");
+      window.dispatchEvent(new Event('refreshUnreadCount'));
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error("Error deleting all alerts:", error);
+      toast.error("Failed to delete all alerts");
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeletingAll(false);
     }
   };
 
   const handleMarkAllRead = async () => {
+    if (isMarkingAllRead) return;
+    
     try {
+      setIsMarkingAllRead(true);
       await alertsApi.markAllRead();
       setAlerts(alerts.map(a => ({ ...a, read: true })));
       toast.success("All alerts marked as read");
@@ -52,6 +228,8 @@ const AlertsNotifications = () => {
     } catch (error) {
       console.error("Error marking all read:", error);
       toast.error("Failed to update alerts");
+    } finally {
+      setIsMarkingAllRead(false);
     }
   };
 
@@ -131,12 +309,32 @@ const AlertsNotifications = () => {
               </button>
             ))}
           </div>
-          <button 
-            onClick={handleMarkAllRead}
-            className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-          >
-            Mark All as Read
-          </button>
+          <div className="ml-auto flex items-center gap-4">
+            <button 
+              onClick={handleMarkAllRead}
+              disabled={isMarkingAllRead || isDeletingAll}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isMarkingAllRead ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Marking...
+                </>
+              ) : (
+                'Mark All as Read'
+              )}
+            </button>
+            {alerts.length > 0 && (
+              <button 
+                onClick={handleDeleteAll}
+                disabled={isMarkingAllRead || isDeletingAll}
+                className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete All
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -157,8 +355,9 @@ const AlertsNotifications = () => {
                 alert.read 
                   ? 'bg-white border-gray-200' 
                   : `${config.cardBg} ${config.border} shadow-md`
-              }`}
+              } ${processingAlerts.has(alert.id) ? 'opacity-70 pointer-events-none' : ''}`}
               onClick={() => {
+                if (processingAlerts.has(alert.id)) return;
                 setSelectedAlert(alert);
                 if (!alert.read) handleMarkRead({ stopPropagation: () => {} }, alert.id);
               }}
@@ -180,6 +379,18 @@ const AlertsNotifications = () => {
                     {!alert.read && (
                       <div className="w-2 h-2 bg-indigo-600 rounded-full ml-4" />
                     )}
+                    <button
+                      onClick={(e) => handleDelete(e, alert.id)}
+                      disabled={processingAlerts.has(alert.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-2 disabled:opacity-50"
+                      title="Delete notification"
+                    >
+                      {processingAlerts.has(alert.id) ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                   <p className="text-xs text-gray-500">{formatTimestamp(alert.timestamp)}</p>
                 </div>
@@ -216,7 +427,14 @@ const AlertsNotifications = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Time</span>
                   <span className="font-medium text-gray-900">
-                    {new Date(selectedAlert.timestamp).toLocaleString()}
+                    {new Date(selectedAlert.timestamp).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -233,6 +451,43 @@ const AlertsNotifications = () => {
                 className="w-full px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl p-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 text-center mb-2">Delete All Alerts?</h2>
+            <p className="text-gray-600 text-center mb-6">
+              This action cannot be undone. All your notifications will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAll}
+                disabled={isDeletingAll}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeletingAll ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete All'
+                )}
               </button>
             </div>
           </div>

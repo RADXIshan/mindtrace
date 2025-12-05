@@ -192,14 +192,20 @@ const SOSPage = () => {
         setIsSOSSoundPlaying(false);
     }, []);
 
-    // Toggle SOS sound
+    // Toggle SOS sound and notification
     const toggleSOSSound = useCallback(() => {
         if (isSOSSoundPlaying) {
             stopSOSSound();
+            hideNotificationBanner();
         } else {
             playSOSSound();
+            // Trigger the SOS notification banner with current location
+            triggerSOSNotification(
+                '🚨 Emergency SOS Activated! Help is needed immediately.',
+                currentLocation
+            );
         }
-    }, [isSOSSoundPlaying, playSOSSound, stopSOSSound]);
+    }, [isSOSSoundPlaying, playSOSSound, stopSOSSound, hideNotificationBanner, triggerSOSNotification, currentLocation]);
 
     // Cleanup on unmount
     useEffect(() => {

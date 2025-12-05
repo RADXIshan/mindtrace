@@ -3,8 +3,8 @@
  * Main SOS Alert Dashboard page
  */
 
-import { useEffect, useState } from 'react';
-import { Shield } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Shield, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 
 // Components
 import SOSMap from './SOSMap';
@@ -100,6 +100,114 @@ const SOSPage = () => {
         triggerSOSNotification
     } = useNotifications();
 
+    // SOS Sound state  
+    const [isSOSSoundPlaying, setIsSOSSoundPlaying] = useState(false);
+    const audioContextRef = useRef(null);
+    const ringtoneIntervalRef = useRef(null);
+
+    // Play SOS ringtone similar to iPhone
+    const playSOSSound = useCallback(() => {
+        if (isSOSSoundPlaying) return;
+
+        try {
+            // Stop any existing sound first
+            stopSOSSound();
+
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            const ctx = audioContextRef.current;
+
+            const playRingPattern = () => {
+                if (!audioContextRef.current || audioContextRef.current.state === 'closed') return;
+
+                const now = ctx.currentTime;
+
+                // iPhone-style emergency ringtone pattern
+                const pattern = [
+                    // First ring burst - ascending tones
+                    { freq: 880, start: 0.0, dur: 0.12 },
+                    { freq: 1047, start: 0.12, dur: 0.12 },
+                    { freq: 1319, start: 0.24, dur: 0.12 },
+                    { freq: 1568, start: 0.36, dur: 0.15 },
+                    // Descending
+                    { freq: 1319, start: 0.55, dur: 0.12 },
+                    { freq: 1047, start: 0.67, dur: 0.12 },
+                    { freq: 880, start: 0.79, dur: 0.15 },
+                    // Pause, then repeat with urgency
+                    { freq: 1047, start: 1.1, dur: 0.1 },
+                    { freq: 1319, start: 1.2, dur: 0.1 },
+                    { freq: 1568, start: 1.3, dur: 0.1 },
+                    { freq: 1760, start: 1.4, dur: 0.15 },
+                    { freq: 1568, start: 1.6, dur: 0.1 },
+                    { freq: 1319, start: 1.7, dur: 0.1 },
+                    { freq: 1047, start: 1.8, dur: 0.15 },
+                ];
+
+                pattern.forEach(({ freq, start, dur }) => {
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sine';
+
+                    // Smooth envelope for a pleasant but urgent ring sound
+                    gainNode.gain.setValueAtTime(0, now + start);
+                    gainNode.gain.linearRampToValueAtTime(0.5, now + start + 0.02);
+                    gainNode.gain.setValueAtTime(0.5, now + start + dur - 0.02);
+                    gainNode.gain.linearRampToValueAtTime(0, now + start + dur);
+
+                    oscillator.start(now + start);
+                    oscillator.stop(now + start + dur);
+                });
+            };
+
+            // Play immediately
+            playRingPattern();
+            setIsSOSSoundPlaying(true);
+
+            // Loop the ringtone
+            ringtoneIntervalRef.current = setInterval(() => {
+                if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                    playRingPattern();
+                }
+            }, 2200);
+
+        } catch (error) {
+            console.warn('SOS Audio playback failed:', error);
+        }
+    }, [isSOSSoundPlaying]);
+
+    // Stop SOS sound
+    const stopSOSSound = useCallback(() => {
+        if (ringtoneIntervalRef.current) {
+            clearInterval(ringtoneIntervalRef.current);
+            ringtoneIntervalRef.current = null;
+        }
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+            audioContextRef.current.close().catch(() => { });
+            audioContextRef.current = null;
+        }
+        setIsSOSSoundPlaying(false);
+    }, []);
+
+    // Toggle SOS sound
+    const toggleSOSSound = useCallback(() => {
+        if (isSOSSoundPlaying) {
+            stopSOSSound();
+        } else {
+            playSOSSound();
+        }
+    }, [isSOSSoundPlaying, playSOSSound, stopSOSSound]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            stopSOSSound();
+        };
+    }, [stopSOSSound]);
+
     // Auto-update alert location when current location changes (real-time tracking)
     useEffect(() => {
         if (activeAlert && currentLocation) {
@@ -166,15 +274,48 @@ const SOSPage = () => {
                     </p>
                 </div>
 
-                {/* Status Badge */}
-                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-white font-semibold ${status.color}`}>
-                    {status.pulse && (
-                        <span className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-                        </span>
-                    )}
-                    <span>{status.label}</span>
+                {/* Header Actions */}
+                <div className="flex items-center gap-3">
+                    {/* SOS Sound Button */}
+                    <button
+                        onClick={toggleSOSSound}
+                        className={`
+                            relative flex items-center justify-center gap-2 px-5 py-3 rounded-full font-bold text-white
+                            transition-all duration-300 transform hover:scale-105 active:scale-95
+                            ${isSOSSoundPlaying
+                                ? 'bg-gray-600 hover:bg-gray-700'
+                                : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg hover:shadow-red-500/25'
+                            }
+                        `}
+                        title={isSOSSoundPlaying ? 'Stop SOS Sound' : 'Play SOS Sound'}
+                    >
+                        {isSOSSoundPlaying ? (
+                            <>
+                                <VolumeX className="h-5 w-5" />
+                                <span>Stop Sound</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="relative flex h-3 w-3 mr-1">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                </span>
+                                <AlertTriangle className="h-5 w-5" />
+                                <span>SOS</span>
+                            </>
+                        )}
+                    </button>
+
+                    {/* Status Badge */}
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-white font-semibold ${status.color}`}>
+                        {status.pulse && (
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                            </span>
+                        )}
+                        <span>{status.label}</span>
+                    </div>
                 </div>
             </div>
 

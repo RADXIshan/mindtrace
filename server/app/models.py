@@ -113,7 +113,6 @@ class SOSConfig(Base):
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     send_sms = Column(Boolean, default=True)
     make_call = Column(Boolean, default=True)
-    share_location = Column(Boolean, default=True)
     record_audio = Column(Boolean, default=False)
     email_alert = Column(Boolean, default=True)
     alert_services = Column(Boolean, default=False)

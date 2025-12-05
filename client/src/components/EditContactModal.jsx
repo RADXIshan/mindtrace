@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
 import { contactsApi } from '../services/api';
 import toast from 'react-hot-toast';
+import UnsavedChangesModal from './UnsavedChangesModal';
 
 const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
   const [formStep, setFormStep] = useState(1);
@@ -15,12 +16,15 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
     visit_frequency: '',
     photos: []
   });
+  const [originalData, setOriginalData] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (contact) {
-      setFormData({
+      const initialData = {
         name: contact.name || '',
         relationship: contact.relationship || 'family',
         relationship_detail: contact.relationship_detail || '',
@@ -29,9 +33,19 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
         email: contact.email || '',
         visit_frequency: contact.visit_frequency || '',
         photos: contact.photos || []
-      });
+      };
+      setFormData(initialData);
+      setOriginalData(initialData);
     }
   }, [contact]);
+
+  // Track changes
+  useEffect(() => {
+    if (originalData) {
+      const changed = JSON.stringify(formData) !== JSON.stringify(originalData);
+      setHasUnsavedChanges(changed);
+    }
+  }, [formData, originalData]);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -61,6 +75,8 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
       await contactsApi.update(contact.id, contactData);
       toast.success('Contact updated successfully!');
       
+      setHasUnsavedChanges(false);
+      
       if (onUpdate) {
         onUpdate();
       }
@@ -74,14 +90,29 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
     }
   };
 
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedModal(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleDiscard = () => {
+    setHasUnsavedChanges(false);
+    setShowUnsavedModal(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
+    <>
     <div 
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          onClose();
+          handleClose();
         }
       }}
     >
@@ -103,7 +134,7 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
             <h2 className="text-2xl font-bold text-gray-900">Edit Contact</h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="h-6 w-6 text-gray-600" />
@@ -371,6 +402,19 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
         </div>
       </div>
     </div>
+
+    {/* Unsaved Changes Modal */}
+    <UnsavedChangesModal
+      isOpen={showUnsavedModal}
+      onSave={() => {
+        setShowUnsavedModal(false);
+        handleSubmit();
+      }}
+      onDiscard={handleDiscard}
+      onCancel={() => setShowUnsavedModal(false)}
+      saving={isSubmitting}
+    />
+    </>
   );
 };
 

@@ -83,6 +83,7 @@ export const sosApi = {
   getContacts: () => api.get('/sos/contacts'),
   createContact: (data) => api.post('/sos/contacts', data),
   deleteContact: (id) => api.delete(`/sos/contacts/${id}`),
+  updateContact: (id, data) => api.put(`/sos/contacts/${id}`, data),
   getConfig: () => api.get('/sos/config'),
   updateConfig: (data) => api.put('/sos/config', data),
   

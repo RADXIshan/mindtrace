@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router';
 import { User, Lock, Shield, Trash2, Save, AlertCircle, CheckCircle, Eye, EyeOff, Camera, X as XIcon } from 'lucide-react';
 import { userApi } from '../services/api';
 import UnsavedChangesModal from '../components/UnsavedChangesModal';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 
 const ProfileSettings = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
   
   const [profile, setProfile] = useState({
     full_name: '',
@@ -28,7 +26,6 @@ const ProfileSettings = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -46,7 +43,13 @@ const ProfileSettings = () => {
     confirm: false,
   });
 
-  const blockNavigationRef = useRef(false);
+  const blockerRef = useRef(null);
+
+  // Handle navigation blocking when there are unsaved changes
+  useUnsavedChanges(hasUnsavedChanges, (blocker) => {
+    blockerRef.current = blocker;
+    setShowUnsavedModal(true);
+  });
 
   useEffect(() => {
     fetchProfile();
@@ -59,43 +62,8 @@ const ProfileSettings = () => {
         profile.full_name !== originalProfile.full_name ||
         profile.email !== originalProfile.email;
       setHasUnsavedChanges(changed);
-      blockNavigationRef.current = changed;
     }
   }, [profile, originalProfile, loading]);
-
-  // Block navigation when there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (blockNavigationRef.current) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
-
-  // Intercept React Router navigation using Prompt-like behavior
-  useEffect(() => {
-    if (!hasUnsavedChanges) return;
-
-    const handlePopState = (e) => {
-      if (blockNavigationRef.current) {
-        e.preventDefault();
-        window.history.pushState(null, '', location.pathname);
-        setShowUnsavedModal(true);
-        setPendingNavigation(-1); // Special value for back navigation
-      }
-    };
-
-    window.history.pushState(null, '', location.pathname);
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [hasUnsavedChanges, location.pathname]);
 
   const fetchProfile = async () => {
     try {
@@ -134,18 +102,13 @@ const ProfileSettings = () => {
       });
       
       setHasUnsavedChanges(false);
-      blockNavigationRef.current = false;
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
 
       // If this save was triggered by navigation, proceed with it
-      if (shouldNavigate && pendingNavigation) {
-        if (pendingNavigation === -1) {
-          navigate(-1);
-        } else {
-          navigate(pendingNavigation);
-        }
-        setPendingNavigation(null);
+      if (shouldNavigate && blockerRef.current) {
+        blockerRef.current.proceed();
+        blockerRef.current = null;
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -165,18 +128,12 @@ const ProfileSettings = () => {
       email: originalProfile.email,
     });
     setHasUnsavedChanges(false);
-    blockNavigationRef.current = false;
     setShowUnsavedModal(false);
     
     // If there was a pending navigation, proceed with it
-    if (pendingNavigation) {
-      if (pendingNavigation === -1) {
-        // Go back
-        navigate(-1);
-      } else {
-        navigate(pendingNavigation);
-      }
-      setPendingNavigation(null);
+    if (blockerRef.current) {
+      blockerRef.current.proceed();
+      blockerRef.current = null;
     }
   };
 
@@ -565,7 +522,10 @@ const ProfileSettings = () => {
         onDiscard={handleDiscard}
         onCancel={() => {
           setShowUnsavedModal(false);
-          setPendingNavigation(null);
+          if (blockerRef.current) {
+            blockerRef.current.reset();
+            blockerRef.current = null;
+          }
         }}
         saving={saving}
       />

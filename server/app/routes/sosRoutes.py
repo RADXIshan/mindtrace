@@ -26,6 +26,13 @@ class SOSContactBase(BaseModel):
 class SOSContactCreate(SOSContactBase):
     pass
 
+class SOSContactUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    relationship: Optional[str] = None
+    priority: Optional[int] = None
+
 class SOSContactResponse(SOSContactBase):
     id: int
     user_id: int
@@ -36,7 +43,6 @@ class SOSContactResponse(SOSContactBase):
 class SOSConfigBase(BaseModel):
     send_sms: bool = True
     make_call: bool = True
-    share_location: bool = True
     record_audio: bool = False
     email_alert: bool = True
     alert_services: bool = False
@@ -120,6 +126,25 @@ def delete_sos_contact(
     db.delete(db_contact)
     db.commit()
     return {"message": "Contact deleted successfully"}
+
+@router.put("/contacts/{contact_id}", response_model=SOSContactResponse)
+def update_sos_contact(
+    contact_id: int,
+    contact_update: SOSContactUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db_contact = db.query(SOSContact).filter(SOSContact.id == contact_id, SOSContact.user_id == current_user.id).first()
+    if not db_contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    update_data = contact_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_contact, key, value)
+
+    db.commit()
+    db.refresh(db_contact)
+    return db_contact
 
 # --- Config Endpoints ---
 

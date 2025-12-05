@@ -1,8 +1,3 @@
-/**
- * SOSMap Component
- * Interactive map with location marker using Leaflet.js
- */
-
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, AlertCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { MAP_CONFIG } from '../../constants/sosConfig';
@@ -217,7 +212,7 @@ const SOSMap = ({
             />
 
             {/* Controls Overlay */}
-            <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
+            <div className="absolute top-3 right-3 z-1000 flex flex-col gap-2">
                 <button
                     onClick={toggleFullscreen}
                     className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
@@ -233,7 +228,7 @@ const SOSMap = ({
 
             {/* Location Info Overlay */}
             {location && (
-                <div className="absolute bottom-3 left-3 right-3 z-[1000]">
+                <div className="absolute bottom-3 left-3 right-3 z-1000">
                     <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${isAlertActive ? 'bg-amber-100' : 'bg-gray-100'}`}>
                             <MapPin className={`h-5 w-5 ${isAlertActive ? 'text-amber-600' : 'text-gray-600'}`} />

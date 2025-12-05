@@ -1,33 +1,48 @@
-import { useState, useEffect } from 'react';
-import { Shield, Plus, Phone, Mail, Trash2, Save, AlertCircle, CheckCircle, User } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Shield, Plus, Phone, Mail, Trash2, Save, AlertCircle, User, Edit2 } from 'lucide-react';
 import { sosApi } from '../services/api';
 import toast from 'react-hot-toast';
+import UnsavedChangesModal from '../components/UnsavedChangesModal';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import EmergencyContactModal from '../components/sos/EmergencyContactModal';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 
 const SOSSettings = () => {
   const [contacts, setContacts] = useState([]);
   const [config, setConfig] = useState({
     send_sms: true,
     make_call: true,
-    share_location: true,
     record_audio: false,
     email_alert: true,
     alert_services: false,
   });
+  const [originalConfig, setOriginalConfig] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
-  const [newContact, setNewContact] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    relationship: '',
-    priority: 1,
+  const [contactToDelete, setContactToDelete] = useState(null);
+  const blockerRef = useRef(null);
+
+  // Handle navigation blocking when there are unsaved changes
+  useUnsavedChanges(hasUnsavedChanges, (blocker) => {
+    blockerRef.current = blocker;
+    setShowUnsavedModal(true);
   });
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Check for unsaved changes
+  useEffect(() => {
+    if (originalConfig) {
+      const changed = JSON.stringify(config) !== JSON.stringify(originalConfig);
+      setHasUnsavedChanges(changed);
+    }
+  }, [config, originalConfig]);
 
   const fetchData = async () => {
     try {
@@ -37,7 +52,9 @@ const SOSSettings = () => {
         sosApi.getConfig(),
       ]);
       setContacts(contactsRes.data || []);
-      setConfig(configRes.data || config);
+      const fetchedConfig = configRes.data || config;
+      setConfig(fetchedConfig);
+      setOriginalConfig(fetchedConfig);
     } catch (error) {
       console.error('Failed to fetch SOS settings:', error);
       toast.error('Failed to load SOS settings');
@@ -46,52 +63,91 @@ const SOSSettings = () => {
     }
   };
 
-  const handleAddContact = async () => {
-    if (!newContact.name || !newContact.phone) {
-      toast.error('Name and phone number are required');
-      return;
-    }
+  const handleSaveContact = async (contactData) => {
+    setSaving(true);
+    const promise = editingContact
+      ? sosApi.updateContact(editingContact.id, contactData)
+      : sosApi.createContact(contactData);
 
-    try {
-      setSaving(true);
-      const response = await sosApi.createContact(newContact);
-      setContacts([...contacts, response.data]);
-      setShowAddModal(false);
-      setNewContact({ name: '', phone: '', email: '', relationship: '', priority: 1 });
-      toast.success('Emergency contact added successfully');
-    } catch (error) {
-      console.error('Failed to add contact:', error);
-      toast.error('Failed to add emergency contact');
-    } finally {
+    toast.promise(promise, {
+      loading: editingContact ? 'Updating contact...' : 'Adding contact...',
+      success: (response) => {
+        if (editingContact) {
+          setContacts(contacts.map(c => c.id === editingContact.id ? response.data : c));
+          return 'Emergency contact updated successfully';
+        } else {
+          setContacts([...contacts, response.data]);
+          return 'Emergency contact added successfully';
+        }
+      },
+      error: (err) => {
+        console.error('Failed to save contact:', err);
+        return editingContact ? 'Failed to update contact' : 'Failed to add emergency contact';
+      }
+    }).finally(() => {
       setSaving(false);
-    }
+      setShowAddModal(false);
+      setEditingContact(null);
+    });
   };
 
-  const handleDeleteContact = async (contactId) => {
-    if (!confirm('Are you sure you want to remove this emergency contact?')) {
-      return;
-    }
-
-    try {
-      await sosApi.deleteContact(contactId);
-      setContacts(contacts.filter(c => c.id !== contactId));
-      toast.success('Emergency contact removed');
-    } catch (error) {
-      console.error('Failed to delete contact:', error);
-      toast.error('Failed to remove emergency contact');
-    }
+  const handleEditClick = (contact) => {
+    setEditingContact(contact);
+    setShowAddModal(true);
   };
 
-  const handleSaveConfig = async () => {
+  const handleDeleteClick = (contact) => {
+    setContactToDelete(contact);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!contactToDelete) return;
+
+    const promise = sosApi.deleteContact(contactToDelete.id);
+
+    toast.promise(promise, {
+      loading: 'Deleting contact...',
+      success: () => {
+        setContacts(contacts.filter(c => c.id !== contactToDelete.id));
+        return 'Emergency contact removed';
+      },
+      error: (err) => {
+        console.error('Failed to delete contact:', err);
+        return 'Failed to remove emergency contact';
+      }
+    }).finally(() => {
+      setContactToDelete(null);
+    });
+  };
+
+  const handleSaveConfig = async (shouldNavigate = false) => {
     try {
       setSaving(true);
       await sosApi.updateConfig(config);
+      setOriginalConfig(config);
+      setHasUnsavedChanges(false);
       toast.success('SOS settings saved successfully');
+
+      if (shouldNavigate && blockerRef.current) {
+        blockerRef.current.proceed();
+        blockerRef.current = null;
+      }
     } catch (error) {
       console.error('Failed to save config:', error);
       toast.error('Failed to save SOS settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    setConfig(originalConfig);
+    setHasUnsavedChanges(false);
+    setShowUnsavedModal(false);
+
+    if (blockerRef.current) {
+      blockerRef.current.proceed();
+      blockerRef.current = null;
     }
   };
 
@@ -125,7 +181,10 @@ const SOSSettings = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Emergency Contacts</h2>
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={() => {
+                  setEditingContact(null);
+                  setShowAddModal(true);
+                }}
                 className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-gray-700 transition-colors flex items-center gap-2"
               >
                 <Plus className="h-5 w-5" />
@@ -138,7 +197,10 @@ const SOSSettings = () => {
                 <AlertCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p className="text-gray-600 mb-4">No emergency contacts configured</p>
                 <button
-                  onClick={() => setShowAddModal(true)}
+                  onClick={() => {
+                    setEditingContact(null);
+                    setShowAddModal(true);
+                  }}
                   className="px-6 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-gray-700 transition-colors"
                 >
                   Add Your First Contact
@@ -177,13 +239,22 @@ const SOSSettings = () => {
                         </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteContact(contact.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      aria-label="Delete contact"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditClick(contact)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        aria-label="Edit contact"
+                      >
+                        <Edit2 className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(contact)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        aria-label="Delete contact"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -209,7 +280,7 @@ const SOSSettings = () => {
                     onChange={(e) => setConfig({ ...config, send_sms: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
                 </label>
               </div>
 
@@ -225,23 +296,7 @@ const SOSSettings = () => {
                     onChange={(e) => setConfig({ ...config, make_call: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900">Share Location</p>
-                  <p className="text-sm text-gray-600">Send GPS coordinates</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={config.share_location}
-                    onChange={(e) => setConfig({ ...config, share_location: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
                 </label>
               </div>
 
@@ -257,7 +312,7 @@ const SOSSettings = () => {
                     onChange={(e) => setConfig({ ...config, record_audio: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
                 </label>
               </div>
 
@@ -273,7 +328,7 @@ const SOSSettings = () => {
                     onChange={(e) => setConfig({ ...config, email_alert: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
                 </label>
               </div>
 
@@ -289,28 +344,30 @@ const SOSSettings = () => {
                     onChange={(e) => setConfig({ ...config, alert_services: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-900"></div>
                 </label>
               </div>
             </div>
 
-            <button
-              onClick={handleSaveConfig}
-              disabled={saving}
-              className="w-full mt-6 px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-5 w-5" />
-                  Save Settings
-                </>
-              )}
-            </button>
+            {hasUnsavedChanges && (
+              <button
+                onClick={() => handleSaveConfig(false)}
+                disabled={saving}
+                className="w-full mt-6 px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-5 w-5" />
+                    Save Settings
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Info Card */}
@@ -329,84 +386,47 @@ const SOSSettings = () => {
         </div>
       </div>
 
-      {/* Add Contact Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Add Emergency Contact</h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name <span className="text-slate-800">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newContact.name}
-                  onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="John Doe"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number <span className="text-slate-800">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={newContact.phone}
-                  onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="+1 (555) 123-4567"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email (Optional)
-                </label>
-                <input
-                  type="email"
-                  value={newContact.email}
-                  onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="john@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Relationship (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={newContact.relationship}
-                  onChange={(e) => setNewContact({ ...newContact, relationship: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="e.g., Spouse, Daughter, Friend"
-                />
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setNewContact({ name: '', phone: '', email: '', relationship: '', priority: 1 });
-                }}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddContact}
-                disabled={saving || !newContact.name || !newContact.phone}
-                className="flex-1 px-6 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-gray-700 disabled:opacity-50"
-              >
-                {saving ? 'Adding...' : 'Add Contact'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Add/Edit Contact Modal */}
+      <EmergencyContactModal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setEditingContact(null);
+        }}
+        onSave={handleSaveContact}
+        initialData={editingContact}
+        title={editingContact ? "Edit Emergency Contact" : "Add Emergency Contact"}
+        saving={saving}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={!!contactToDelete}
+        onClose={() => setContactToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Remove Emergency Contact"
+        message={`Are you sure you want to remove ${contactToDelete?.name} from your emergency contacts? This action cannot be undone.`}
+        confirmText="Remove Contact"
+        itemName={contactToDelete?.name}
+      />
+
+      {/* Unsaved Changes Modal */}
+      <UnsavedChangesModal
+        isOpen={showUnsavedModal}
+        onSave={() => {
+          setShowUnsavedModal(false);
+          handleSaveConfig(true);
+        }}
+        onDiscard={handleDiscard}
+        onCancel={() => {
+          setShowUnsavedModal(false);
+          if (blockerRef.current) {
+            blockerRef.current.reset();
+            blockerRef.current = null;
+          }
+        }}
+        saving={saving}
+      />
     </div>
   );
 };

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { X, ChevronDown, Clock, Pill, Utensils, Activity, Droplets } from 'lucide-react';
 import { remindersApi } from '../services/api';
 import toast from 'react-hot-toast';
+import UnsavedChangesModal from './UnsavedChangesModal';
 
 const AddReminderModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }) => {
   const navigate = useNavigate();
@@ -16,7 +17,21 @@ const AddReminderModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }
 
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showRecurrenceDropdown, setShowRecurrenceDropdown] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Track if user has made any changes
+  useEffect(() => {
+    const hasChanges = 
+      formData.title !== '' ||
+      formData.type !== 'medication' ||
+      formData.time !== '' ||
+      formData.recurrence !== 'daily' ||
+      formData.notes !== '';
+    
+    setHasUnsavedChanges(hasChanges);
+  }, [formData]);
 
   const reminderTypes = [
     { value: 'medication', label: 'Medication', icon: Pill },
@@ -51,6 +66,7 @@ const AddReminderModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }
         recurrence: 'daily',
         notes: ''
       });
+      setHasUnsavedChanges(false);
       
       // Navigate to reminders page if requested (before closing modal)
       if (navigateAfterSave) {
@@ -66,6 +82,27 @@ const AddReminderModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }
     }
   };
 
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedModal(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleDiscard = () => {
+    setFormData({
+      title: '',
+      type: 'medication',
+      time: '',
+      recurrence: 'daily',
+      notes: ''
+    });
+    setHasUnsavedChanges(false);
+    setShowUnsavedModal(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const selectedType = reminderTypes.find(t => t.value === formData.type);
@@ -73,11 +110,12 @@ const AddReminderModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }
   const TypeIcon = selectedType.icon;
 
   return (
+    <>
     <div 
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          onClose();
+          handleClose();
         }
       }}
     >
@@ -87,7 +125,7 @@ const AddReminderModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }
           <h2 className="text-2xl font-bold text-gray-900">Add New Reminder</h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="h-6 w-6 text-gray-600" />
@@ -211,7 +249,7 @@ const AddReminderModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }
           <div className="p-6 border-t border-gray-200 flex gap-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
             >
               Cancel
@@ -227,6 +265,21 @@ const AddReminderModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }
         </form>
       </div>
     </div>
+
+    {/* Unsaved Changes Modal */}
+    <UnsavedChangesModal
+      isOpen={showUnsavedModal}
+      onSave={() => {
+        setShowUnsavedModal(false);
+        // Trigger form submission
+        const form = document.querySelector('form');
+        if (form) form.requestSubmit();
+      }}
+      onDiscard={handleDiscard}
+      onCancel={() => setShowUnsavedModal(false)}
+      saving={isSubmitting}
+    />
+    </>
   );
 };
 

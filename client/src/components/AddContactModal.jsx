@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { X, Upload } from 'lucide-react';
 import { contactsApi } from '../services/api';
 import toast from 'react-hot-toast';
+import UnsavedChangesModal from './UnsavedChangesModal';
 
 const AddContactModal = ({ isOpen, onClose, onSave, navigateAfterSave = false }) => {
   const navigate = useNavigate();
@@ -17,8 +18,25 @@ const AddContactModal = ({ isOpen, onClose, onSave, navigateAfterSave = false })
     visit_frequency: '',
     photos: []
   });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Track if user has made any changes
+  useEffect(() => {
+    const hasChanges = 
+      formData.name !== '' ||
+      formData.relationship !== 'family' ||
+      formData.relationship_detail !== '' ||
+      formData.notes !== '' ||
+      formData.phone_number !== '' ||
+      formData.email !== '' ||
+      formData.visit_frequency !== '' ||
+      formData.photos.length > 0;
+    
+    setHasUnsavedChanges(hasChanges);
+  }, [formData]);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -85,6 +103,7 @@ const AddContactModal = ({ isOpen, onClose, onSave, navigateAfterSave = false })
         photos: []
       });
       setFormStep(1);
+      setHasUnsavedChanges(false);
       
       // Navigate to contacts page if requested (before closing modal)
       if (navigateAfterSave) {
@@ -100,14 +119,40 @@ const AddContactModal = ({ isOpen, onClose, onSave, navigateAfterSave = false })
     }
   };
 
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedModal(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleDiscard = () => {
+    setFormData({
+      name: '',
+      relationship: 'family',
+      relationship_detail: '',
+      notes: '',
+      phone_number: '',
+      email: '',
+      visit_frequency: '',
+      photos: []
+    });
+    setFormStep(1);
+    setHasUnsavedChanges(false);
+    setShowUnsavedModal(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
+    <>
     <div 
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          onClose();
+          handleClose();
         }
       }}
     >
@@ -116,7 +161,7 @@ const AddContactModal = ({ isOpen, onClose, onSave, navigateAfterSave = false })
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">Add New Contact</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="h-6 w-6 text-gray-600" />
@@ -378,6 +423,19 @@ const AddContactModal = ({ isOpen, onClose, onSave, navigateAfterSave = false })
         </div>
       </div>
     </div>
+
+    {/* Unsaved Changes Modal */}
+    <UnsavedChangesModal
+      isOpen={showUnsavedModal}
+      onSave={() => {
+        setShowUnsavedModal(false);
+        handleSubmit();
+      }}
+      onDiscard={handleDiscard}
+      onCancel={() => setShowUnsavedModal(false)}
+      saving={isSubmitting}
+    />
+    </>
   );
 };
 

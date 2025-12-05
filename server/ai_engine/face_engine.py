@@ -17,7 +17,7 @@ def load_models():
     """
     Load the RetinaFace and ArcFace models.
     """
-    # buffalo_l contains RetinaFace + ArcFace
+
     app = FaceAnalysis(name="buffalo_l")
     app.prepare(ctx_id=0, det_size=(640, 640))
     return app

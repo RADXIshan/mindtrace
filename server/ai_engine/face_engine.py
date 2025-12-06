@@ -94,11 +94,19 @@ def recognize_face(app, image, threshold=0.45, user_id=None):
         where_filter = {"user_id": user_id} if user_id else None
         
         try:
-            query_result = collection.query(
-                query_embeddings=[current_emb],
-                n_results=1,
-                where=where_filter
-            )
+            # Check if collection is empty first
+            collection_count = collection.count()
+            print(f"DEBUG: ChromaDB collection has {collection_count} embeddings")
+            
+            if collection_count == 0:
+                print(f"DEBUG: Collection is empty, marking face {idx} as Unknown")
+                query_result = None
+            else:
+                query_result = collection.query(
+                    query_embeddings=[current_emb],
+                    n_results=1,
+                    where=where_filter
+                )
         except Exception as e:
             print(f"Error querying ChromaDB: {e}")
             query_result = None
@@ -128,11 +136,11 @@ def recognize_face(app, image, threshold=0.45, user_id=None):
         if best_match is None:
             result = {
                 "name": "Unknown", 
-                "relation": "Unknown", 
+                "relation": "Unidentified Person", 
                 "confidence": float(best_score) if best_score > 0 else 0.0,
                 "bbox": current_bbox
             }
-            print(f"DEBUG: Face {idx} -> Unknown (score: {best_score:.3f})")
+            print(f"DEBUG: Face {idx} -> Unknown (score: {best_score:.3f if best_score > 0 else 0.0})")
             results.append(result)
         else:
             match_result = {

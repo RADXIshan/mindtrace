@@ -92,6 +92,19 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
                         </div>
                     )
                 ))}
+                
+                {/* Info message when Unknown faces are detected */}
+                {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.length > 0 && 
+                 recognitionResult.every(r => r.name === 'Unknown') && (
+                    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 max-w-md">
+                        <div className="bg-indigo-600/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-indigo-400/50 shadow-xl">
+                            <p className="text-white text-sm font-medium text-center">
+                                💡 Upload contacts with photos to identify faces
+                            </p>
+                        </div>
+                    </div>
+                )}
+                
                 {/* Live Subtitles */}
                 {subtitle && (
                     <div className="absolute bottom-20 left-1/2 -translate-x-1/2 max-w-2xl w-full text-center px-6">
@@ -165,6 +178,18 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
                     </div>
                 )
             ))}
+            
+            {/* Info message when Unknown faces are detected */}
+            {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.length > 0 && 
+             recognitionResult.every(r => r.name === 'Unknown') && (
+                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 max-w-md">
+                    <div className="bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 shadow-xl">
+                        <p className="text-white text-sm font-medium text-center">
+                            💡 Upload contacts with photos to identify faces
+                        </p>
+                    </div>
+                </div>
+            )}
             
             {/* Live Subtitles */}
             {subtitle && (

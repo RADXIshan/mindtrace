@@ -39,8 +39,12 @@ async def recognize_face_endpoint(
         # Pass user_id to restrict recognition to user's contacts
         result = recognize_face(face_app, img, user_id=current_user.id)
         
+        # Ensure result is always a list
+        if result is None:
+            result = []
+        
         # Log recognition results for debugging
-        if result:
+        if result and len(result) > 0:
             names = [r.get("name", "Unknown") for r in result]
             confidences = [f"{r.get('confidence', 0):.2f}" for r in result]
             print(f"DEBUG: API Response - Recognized {len(result)} face(s): {', '.join([f'{n} ({c})' for n, c in zip(names, confidences)])}")

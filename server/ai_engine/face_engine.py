@@ -21,10 +21,13 @@ except ImportError:
 def load_models():
     """
     Load the RetinaFace and ArcFace models.
+    Optimized for faster detection with smaller detection size.
     """
 
     app = FaceAnalysis(name="buffalo_l")
-    app.prepare(ctx_id=0, det_size=(640, 640))
+    # Reduced detection size from 640x640 to 480x480 for faster processing
+    # This is sufficient for most face recognition tasks
+    app.prepare(ctx_id=0, det_size=(480, 480))
     return app
 
 def detect_and_embed(app, image):

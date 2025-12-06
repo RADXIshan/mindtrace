@@ -40,9 +40,18 @@ async def lifespan(app: FastAPI):
     # Startup: Pre-load face recognition models to avoid cold start delays
     try:
         from .routes.contactRoutes import get_face_app
+        import numpy as np
+        import cv2
+        
         print("Pre-loading face recognition models...")
-        get_face_app()
-        print("✓ Face recognition models loaded successfully")
+        face_app = get_face_app()
+        print("✓ Face recognition models loaded")
+        
+        # Warmup: Run a dummy inference to initialize CUDA/CPU kernels
+        print("Warming up face recognition engine...")
+        dummy_image = np.zeros((480, 480, 3), dtype=np.uint8)
+        face_app.get(dummy_image)
+        print("✓ Face recognition engine warmed up and ready")
     except Exception as e:
         print(f"⚠ Warning: Failed to pre-load face recognition models: {e}")
     

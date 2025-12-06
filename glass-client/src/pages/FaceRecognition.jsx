@@ -83,7 +83,7 @@ const FaceRecognition = () => {
     const isProcessingRef = useRef(false);
     const loopActiveRef = useRef(false);
     const lastRequestTimeRef = useRef(0);
-    const MIN_REQUEST_INTERVAL = 500; // Minimum 500ms between requests (2 FPS max)
+    const MIN_REQUEST_INTERVAL = 150; // Minimum 150ms between requests (~6-7 FPS for faster detection)
 
     const captureFrame = () => {
         if (videoRef.current && canvasRef.current) {
@@ -93,8 +93,8 @@ const FaceRecognition = () => {
 
             if (video.videoWidth === 0 || video.videoHeight === 0) return null;
 
-            // Resize to max 640px width to reduce bandwidth and server load
-            const MAX_WIDTH = 640;
+            // Resize to max 480px width for faster processing (reduced from 640px)
+            const MAX_WIDTH = 480;
             let width = video.videoWidth;
             let height = video.videoHeight;
 
@@ -110,7 +110,7 @@ const FaceRecognition = () => {
             return new Promise(resolve => {
                 canvas.toBlob(blob => {
                     resolve(blob);
-                }, 'image/jpeg', 0.8); // Add quality compression
+                }, 'image/jpeg', 0.7); // Slightly lower quality for faster upload
             });
         }
         return null;
@@ -123,7 +123,8 @@ const FaceRecognition = () => {
         const videoWidth = video.videoWidth;
         const videoHeight = video.videoHeight;
         
-        const MAX_WIDTH = 640;
+        // Match the MAX_WIDTH used in captureFrame (now 480)
+        const MAX_WIDTH = 480;
         let sentWidth = videoWidth;
         let sentHeight = videoHeight;
         if (videoWidth > MAX_WIDTH) {
@@ -146,10 +147,7 @@ const FaceRecognition = () => {
         const nX2 = x2 / sentWidth;
         const nY2 = y2 / sentHeight;
 
-        // Map to video element scale (which matches screen via object-cover usually)
-        // But object-cover cuts off parts.
-        
-        // Let's go step by step:
+        // Map to video element scale (which matches screen via object-cover)
         // 1. Video frame scaling to screen
         const scaledWidth = videoWidth * scale; // Width of video on screen
         const scaledHeight = videoHeight * scale; // Height of video on screen
@@ -217,6 +215,8 @@ const FaceRecognition = () => {
                 setDebugStatus(`ASR: ${profileId}`);
             };
             
+            let subtitleTimeout = null;
+            
             wsRef.current.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
@@ -224,7 +224,22 @@ const FaceRecognition = () => {
                     
                     if (data.type === 'subtitle') {
                         console.log("Subtitle:", data.text);
-                        setSubtitle(data.text);
+                        
+                        // Clear any existing timeout
+                        if (subtitleTimeout) {
+                            clearTimeout(subtitleTimeout);
+                        }
+                        
+                        if (data.text && data.text.trim()) {
+                            setSubtitle(data.text);
+                            // Keep subtitle visible for 3 seconds after last update
+                            subtitleTimeout = setTimeout(() => {
+                                setSubtitle("");
+                            }, 3000);
+                        } else {
+                            // Empty subtitle clears immediately
+                            setSubtitle("");
+                        }
                     } else if (data.type === 'error') {
                         console.error("Server error:", data.message);
                         setDebugStatus(`Error: ${data.message}`);
@@ -342,9 +357,8 @@ const FaceRecognition = () => {
         console.log("Stopping ASR...");
         isRecordingRef.current = false;
         
-        // Clear subtitle shortly after stopping, or keep it?
-        // Let's keep it for a bit then clear
-        setTimeout(() => setSubtitle(""), 3000);
+        // Keep subtitle visible for 2 seconds after stopping
+        setTimeout(() => setSubtitle(""), 2000);
         
         if (wsRef.current) {
             wsRef.current.close();
@@ -393,7 +407,7 @@ const FaceRecognition = () => {
         }
 
         if (!videoRef.current || videoRef.current.paused || videoRef.current.ended || videoRef.current.readyState < 2) {
-             setTimeout(processFrame, 100);
+             requestAnimationFrame(processFrame); // Use RAF instead of setTimeout for smoother loop
              return;
         }
 
@@ -443,15 +457,12 @@ const FaceRecognition = () => {
                 // Use the name of the first person detected as ID
                 const name = processedResults[0]?.name || "Unknown";
                 const currentUserId = userIdRef.current; // Use ref to get current value
-                console.log(`[ASR CHECK] Face detected: ${name}, isRecording: ${isRecordingRef.current}, userId: ${currentUserId}`);
                 
                 if (!isRecordingRef.current && currentUserId) {
                     console.log(`Face detected: ${name}, starting ASR...`);
                     startRecording(name);
                 } else if (!currentUserId) {
                     console.warn("Cannot start ASR: userId not available yet");
-                } else if (isRecordingRef.current) {
-                    console.log("ASR already recording");
                 }
                 // -------------------
 
@@ -460,28 +471,22 @@ const FaceRecognition = () => {
                     timeoutRef.current = null;
                 }
             } else {
-                console.log("No faces detected in this frame");
                 setRecognitionResult([]);
                  if (lastResultRef.current && !timeoutRef.current) {
+                    // Increased timeout to 2 seconds to reduce flicker
                     timeoutRef.current = setTimeout(() => {
                         lastResultRef.current = null;
                         timeoutRef.current = null;
-                        setDebugStatus("Cleared (Timeout)");
+                        setDebugStatus("No Faces");
                         
                         // --- ASR Stop ---
                         stopRecording();
                         // ----------------
                         
-                    }, 1000);
-                    setDebugStatus("Persisting");
+                    }, 2000);
+                    setDebugStatus("Persisting...");
                 } else if (!lastResultRef || !lastResultRef.current) {
-                     setDebugStatus("No Faces");
-                     
-                     // --- ASR Stop (Immediate if no persist) ---
-                     if (isRecordingRef.current) {
-                         stopRecording();
-                     }
-                     // ------------------------------------------
+                     setDebugStatus("Scanning...");
                 }
             }
         } catch (err) {
@@ -496,8 +501,8 @@ const FaceRecognition = () => {
             
             setDebugStatus(`Err: ${err.message}`);
             
-            // Add exponential backoff on errors
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Shorter backoff on errors (500ms instead of 1000ms)
+            await new Promise(resolve => setTimeout(resolve, 500));
         } finally {
             isProcessingRef.current = false;
             if (loopActiveRef.current) {

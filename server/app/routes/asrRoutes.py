@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, status
 from sqlalchemy.orm import Session
 import numpy as np
@@ -306,8 +307,10 @@ async def websocket_asr(
     audio_buffer = []
     chunk_counter = 0
     total_chunks_received = 0
-    TRANSCRIBE_INTERVAL_CHUNKS = 3 # Approx 0.75 second (Faster updates)
-    RMS_THRESHOLD = 0.001 # Reduced threshold for better sensitivity
+    TRANSCRIBE_INTERVAL_CHUNKS = 2 # Approx 0.5 second (Even faster updates)
+    RMS_THRESHOLD = 0.0005 # Further reduced threshold for better sensitivity
+    last_activity_time = asyncio.get_event_loop().time()
+    IDLE_TIMEOUT = 30.0 # Keep connection alive for 30 seconds of silence
 
     if not asr_engine:
         print("❌ Error: ASR Engine is not initialized")
@@ -324,11 +327,22 @@ async def websocket_asr(
 
     try:
         while True:
-            # Receive raw bytes (float32 PCM)
-            data = await websocket.receive_bytes()
+            # Receive raw bytes (float32 PCM) with timeout
+            try:
+                data = await asyncio.wait_for(websocket.receive_bytes(), timeout=1.0)
+            except asyncio.TimeoutError:
+                # Check if we've been idle too long
+                current_time = asyncio.get_event_loop().time()
+                if current_time - last_activity_time > IDLE_TIMEOUT:
+                    print(f"ASR idle timeout reached ({IDLE_TIMEOUT}s), closing connection")
+                    break
+                continue
             
             if len(data) == 0:
                 continue
+            
+            # Update activity time
+            last_activity_time = asyncio.get_event_loop().time()
             
             # Convert bytes to numpy array (float32)
             try:
@@ -340,8 +354,8 @@ async def websocket_asr(
                 audio_buffer.append(chunk)
                 chunk_counter += 1
                 
-                # Log every 10 chunks to avoid spam
-                if total_chunks_received % 10 == 0:
+                # Log every 20 chunks to avoid spam
+                if total_chunks_received % 20 == 0:
                     print(f"Received {total_chunks_received} audio chunks ({len(chunk)} samples each)")
             except Exception as e:
                 print(f"Error converting audio data: {e}")
@@ -349,7 +363,7 @@ async def websocket_asr(
             
             # --- Incremental Transcription for Subtitles ---
             # Use smaller interval for lower latency
-            if chunk_counter >= 1 and asr_engine:
+            if chunk_counter >= TRANSCRIBE_INTERVAL_CHUNKS and asr_engine:
                 chunk_counter = 0
                 try:
                     # Rolling buffer strategy:
@@ -391,17 +405,22 @@ async def websocket_asr(
                     rms = np.sqrt(np.mean(transcribe_window**2))
                     
                     # Reduced valid length check for faster first token
-                    if len(transcribe_window) > 3200 and rms > RMS_THRESHOLD: # > 0.2s
-                        # print(f"Transcribing {len(transcribe_window)} samples...")
-                        transcript = asr_engine.transcribe_audio_chunk(transcribe_window)
-                        if transcript:
-                            print(f"✓ {transcript}")
+                    if len(transcribe_window) > 1600 and rms > RMS_THRESHOLD: # > 0.1s
+                        # Run ASR on threadpool to avoid blocking WebSocket
+                        transcript = await asyncio.to_thread(asr_engine.transcribe_audio_chunk, transcribe_window)
+                        if transcript and transcript.strip():
+                            print(f"✓ Subtitle: {transcript}")
                             await websocket.send_json({
                                 "type": "subtitle",
                                 "text": transcript
                             })
                     else:
-                        pass # Too quiet or too short
+                        # Send empty subtitle to clear if too quiet
+                        if rms <= RMS_THRESHOLD:
+                            await websocket.send_json({
+                                "type": "subtitle",
+                                "text": ""
+                            })
                 except Exception as e:
                     print(f"Incremental transcribe error: {e}")
             # -----------------------------------------------
@@ -422,7 +441,7 @@ async def websocket_asr(
                 
                 if len(full_audio) > 4800: # Ensure at least 0.3 seconds of audio
                     print(f"Transcribing final audio...")
-                    transcript = asr_engine.transcribe_audio_chunk(full_audio)
+                    transcript = await asyncio.to_thread(asr_engine.transcribe_audio_chunk, full_audio)
                     print(f"✓ Final Transcript: {transcript}")
                     
                     if transcript and transcript.strip():

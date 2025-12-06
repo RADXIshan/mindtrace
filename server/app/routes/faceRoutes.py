@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -37,7 +38,8 @@ async def recognize_face_endpoint(
              raise HTTPException(status_code=400, detail="Invalid image data")
 
         # Pass user_id to restrict recognition to user's contacts
-        result = recognize_face(face_app, img, user_id=current_user.id)
+        # Run CPU-bound face recognition in a separate thread to avoid blocking the event loop
+        result = await asyncio.to_thread(recognize_face, face_app, img, user_id=current_user.id)
         
         # Ensure result is always a list
         if result is None:

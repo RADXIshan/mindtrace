@@ -62,8 +62,10 @@ const AddContactModal = ({ isOpen, onClose, onSave, navigateAfterSave = false })
       if (formData.email) formDataToSend.append('email', formData.email);
       if (formData.visit_frequency) formDataToSend.append('visit_frequency', formData.visit_frequency);
       
-      // Use the first photo for face recognition
-      formDataToSend.append('photo', formData.photos[0]);
+      // Send ALL photos for better face recognition (first one will be used for display)
+      formData.photos.forEach((photo) => {
+        formDataToSend.append('photo', photo);
+      });
       
       promise = contactsApi.createWithPhoto(formDataToSend);
     } else {
@@ -258,7 +260,7 @@ const AddContactModal = ({ isOpen, onClose, onSave, navigateAfterSave = false })
           {formStep === 2 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600 mb-4">
-                Upload at least 3 photos for better facial recognition accuracy
+                Upload multiple photos for better facial recognition accuracy. The first photo will be used as the profile picture.
               </p>
               <input
                 ref={fileInputRef}

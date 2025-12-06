@@ -44,6 +44,11 @@ export const contactsApi = {
     },
   }),
   update: (id, data) => api.put(`/contacts/${id}`, data),
+  updateWithPhoto: (id, formData) => api.put(`/contacts/${id}/with-photo`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
   delete: (id) => api.delete(`/contacts/${id}`),
 };
 
@@ -118,6 +123,10 @@ export const searchApi = {
 
 export const asrApi = {
   syncConversations: (userId) => api.post(`/asr/sync-conversations?user_id=${userId}`),
+};
+
+export const statsApi = {
+  getDashboard: () => api.get('/stats/dashboard'),
 };
 
 export default api;

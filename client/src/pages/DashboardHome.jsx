@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Users, Bell, Calendar, TrendingUp, Activity, Plus, ArrowRight, AlertCircle, Glasses } from 'lucide-react';
 import AddContactModal from '../components/AddContactModal';
 import AddReminderModal from '../components/AddReminderModal';
-import { interactionsApi, remindersApi, alertsApi, userApi } from '../services/api';
+import { interactionsApi, remindersApi, alertsApi, userApi, statsApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { formatTime12Hour } from '../utils/timeFormat';
 
@@ -43,16 +43,9 @@ const DashboardHome = () => {
       // Assuming reminders are daily for MVP or we just show all sorted by time
       setTodayReminders(reminders.slice(0, 4));
 
-      // Fetch Alerts for stats
-      const alertsRes = await alertsApi.getAll({ limit: 100 }); // Get enough to count unread
-      const unreadCount = alertsRes.data.filter(a => !a.read).length;
-
-      setStats({
-        visitors: 4, // Placeholder for now as we don't have visitor tracking yet
-        conversations: interactionsRes.data.length, // Just using count of fetched for now
-        unreadAlerts: unreadCount,
-        upcomingReminders: reminders.filter(r => !r.completed).length
-      });
+      // Fetch Dashboard Stats from backend
+      const statsRes = await statsApi.getDashboard();
+      setStats(statsRes.data);
 
     } catch (error) {
       console.error("Error fetching dashboard data:", error);

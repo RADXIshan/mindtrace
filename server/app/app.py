@@ -22,9 +22,9 @@ from .routes.reminderRoutes import router as reminder_router
 from .routes.sosRoutes import router as sos_router
 from .routes.chatRoutes import router as chat_router
 from .routes.userRoutes import router as user_router
-from .routes.userRoutes import router as user_router
 from .routes.searchRoutes import router as search_router
 from .routes.asrRoutes import router as asr_router
+from .routes.statsRoutes import router as stats_router
 from .scheduler import scheduler
 
 CLIENT_URL = os.getenv("CLIENT_URL", "http://localhost:5173")
@@ -102,6 +102,7 @@ app.include_router(chat_router)
 app.include_router(user_router)
 app.include_router(search_router)
 app.include_router(asr_router)
+app.include_router(stats_router)
 
 @app.get("/")
 def server_status():

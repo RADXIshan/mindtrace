@@ -358,7 +358,7 @@ def delete_contact(
     # Remove from ChromaDB
     remove_contact_from_chroma(contact_id)
     
-    # Soft delete
-    db_contact.is_active = False
+    # Hard delete from database
+    db.delete(db_contact)
     db.commit()
     return {"message": "Contact deleted successfully"}

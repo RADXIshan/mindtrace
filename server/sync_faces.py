@@ -18,7 +18,7 @@ def main():
     print("Loading face recognition models...")
     face_app = load_models()
     
-    print("Connecting to database...")
+    print("Connecting to the database...")
     db = SessionLocal()
     
     try:

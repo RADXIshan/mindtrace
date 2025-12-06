@@ -27,19 +27,24 @@ class ConversationStore:
                 json.dump([], f)
 
     def save_conversation(self, profile_id: str, transcript: str, user_id: int = None, contact_id: int = None) -> Dict:
-        """Save a conversation entry to JSON, database, and ChromaDB."""
+        """Save a conversation entry to JSON, database, and ChromaDB with improved error handling."""
+        timestamp = datetime.now()
         entry = {
             "profile_id": profile_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": timestamp.isoformat(),
             "transcript": transcript
         }
         
         # Save to JSON file (backward compatibility)
-        conversations = self._load_conversations()
-        conversations.append(entry)
-        
-        with open(self.storage_path, 'w') as f:
-            json.dump(conversations, f, indent=2)
+        try:
+            conversations = self._load_conversations()
+            conversations.append(entry)
+            
+            with open(self.storage_path, 'w') as f:
+                json.dump(conversations, f, indent=2)
+            print(f"✓ Saved conversation to JSON file")
+        except Exception as e:
+            print(f"⚠ Error saving conversation to JSON: {e}")
         
         # Save to database as Interaction if db_session is available
         interaction_id = None
@@ -47,14 +52,17 @@ class ConversationStore:
             try:
                 from app.models import Interaction
                 
+                # Create summary (first 200 chars)
+                summary = transcript[:200] + "..." if len(transcript) > 200 else transcript
+                
                 db_interaction = Interaction(
                     user_id=user_id,
                     contact_id=contact_id,
                     contact_name=profile_id,
-                    summary=transcript[:200] + "..." if len(transcript) > 200 else transcript,
+                    summary=summary,
                     full_details=transcript,
                     mood="neutral",
-                    timestamp=datetime.now()
+                    timestamp=timestamp
                 )
                 
                 self.db_session.add(db_interaction)
@@ -62,30 +70,44 @@ class ConversationStore:
                 self.db_session.refresh(db_interaction)
                 interaction_id = db_interaction.id
                 
-                print(f"Saved conversation to database as interaction {interaction_id}")
+                print(f"✓ Saved conversation to database as interaction {interaction_id}")
             except Exception as e:
-                print(f"Error saving conversation to database: {e}")
-                self.db_session.rollback()
+                print(f"⚠ Error saving conversation to database: {e}")
+                import traceback
+                traceback.print_exc()
+                try:
+                    self.db_session.rollback()
+                except:
+                    pass
         
         # Save to ChromaDB if collection is available
         if self.chroma_collection and interaction_id:
             try:
+                # Ensure metadata values are JSON-serializable
+                metadata = {
+                    "type": "conversation",
+                    "interaction_id": int(interaction_id),
+                    "user_id": int(user_id) if user_id else -1,
+                    "contact_id": int(contact_id) if contact_id else -1,
+                    "contact_name": str(profile_id),
+                    "timestamp": entry["timestamp"],
+                    "mood": "neutral"
+                }
+                
                 self.chroma_collection.add(
                     ids=[f"interaction_{interaction_id}"],
                     documents=[transcript],
-                    metadatas=[{
-                        "type": "conversation",
-                        "interaction_id": interaction_id,
-                        "user_id": user_id or -1,
-                        "contact_id": contact_id or -1,
-                        "contact_name": profile_id,
-                        "timestamp": entry["timestamp"],
-                        "mood": "neutral"
-                    }]
+                    metadatas=[metadata]
                 )
-                print(f"Saved conversation to ChromaDB with ID interaction_{interaction_id}")
+                print(f"✓ Saved conversation to ChromaDB with ID interaction_{interaction_id}")
             except Exception as e:
-                print(f"Error saving conversation to ChromaDB: {e}")
+                print(f"⚠ Error saving conversation to ChromaDB: {e}")
+                import traceback
+                traceback.print_exc()
+        elif self.chroma_collection and not interaction_id:
+            print(f"⚠ Skipping ChromaDB save: no interaction_id (database save may have failed)")
+        elif not self.chroma_collection:
+            print(f"⚠ Skipping ChromaDB save: collection not available")
             
         return entry
 

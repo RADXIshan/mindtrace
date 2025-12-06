@@ -21,9 +21,11 @@ except ImportError:
 def load_models():
     """
     Load the RetinaFace and ArcFace models.
+    Optimized for faster multi-face detection with balanced detection size.
     """
-
     app = FaceAnalysis(name="buffalo_l")
+    # Use (640, 640) for better detection with various aspect ratios
+    # This handles both portrait and landscape orientations better
     app.prepare(ctx_id=0, det_size=(640, 640))
     return app
 
@@ -35,9 +37,29 @@ def detect_and_embed(app, image):
     if image is None:
         print("DEBUG: Image is None in detect_and_embed")
         return []
+    
+    # Ensure image is in correct format
+    if len(image.shape) != 3 or image.shape[2] != 3:
+        print(f"DEBUG: Invalid image shape: {image.shape}")
+        return []
         
-    print(f"DEBUG: Image shape: {image.shape}")
+    print(f"DEBUG: Image shape: {image.shape}, dtype: {image.dtype}")
+    
+    # Apply histogram equalization for better detection in poor lighting
+    # Convert to LAB color space, equalize L channel, convert back
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    l = clahe.apply(l)
+    enhanced = cv2.merge([l, a, b])
+    enhanced = cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
+    
+    # Try detection on both original and enhanced image
     faces = app.get(image)
+    if len(faces) == 0:
+        print("DEBUG: No faces in original, trying enhanced image")
+        faces = app.get(enhanced)
+    
     print(f"DEBUG: Detected {len(faces)} faces")
     
     if len(faces) == 0:
@@ -63,10 +85,11 @@ def cosine_similarity(a, b):
         return 0.0
     return np.dot(a, b) / (norm_a * norm_b)
 
-def recognize_face(app, image, threshold=0.45, user_id=None):
+def recognize_face(app, image, threshold=0.42, user_id=None):
     """
     Compare input face embeddings to stored embeddings using ChromaDB.
-    Returns a list of recognition results.
+    Optimized for multi-face detection with improved accuracy.
+    Returns a list of recognition results sorted by confidence.
     """
     # Get embedding and bbox for all faces
     detected_faces = detect_and_embed(app, image)
@@ -88,23 +111,23 @@ def recognize_face(app, image, threshold=0.45, user_id=None):
         current_emb = face_data["embedding"]
         current_bbox = face_data["bbox"]
 
-        # Query ChromaDB
-        # We query for the nearest neighbor
+        # Query ChromaDB for top 3 matches to improve accuracy
         # Filter by user_id if provided
         where_filter = {"user_id": user_id} if user_id else None
         
         try:
             # Check if collection is empty first
             collection_count = collection.count()
-            print(f"DEBUG: ChromaDB collection has {collection_count} embeddings")
             
             if collection_count == 0:
                 print(f"DEBUG: Collection is empty, marking face {idx} as Unknown")
                 query_result = None
             else:
+                # Query for top 3 matches for better verification
+                n_results = min(3, collection_count)
                 query_result = collection.query(
                     query_embeddings=[current_emb],
-                    n_results=1,
+                    n_results=n_results,
                     where=where_filter
                 )
         except Exception as e:
@@ -114,47 +137,49 @@ def recognize_face(app, image, threshold=0.45, user_id=None):
         best_match = None
         best_score = -1
         
-        # Chroma returns distance (L2 or Cosine). We configured 'cosine' space.
-        # Cosine distance = 1 - Cosine Similarity.
-        # So Similarity = 1 - Distance.
-        # We want Similarity > threshold.
-        # So 1 - Distance > threshold => Distance < 1 - threshold.
-        
+        # Process query results with improved matching logic
         if query_result and query_result['ids'] and len(query_result['ids'][0]) > 0:
-            # query_result['distances'][0][0] is the distance of the best match
-            distance = query_result['distances'][0][0]
-            similarity = 1.0 - distance
-            
-            metadata = query_result['metadatas'][0][0]
-            
-            print(f"DEBUG: Face {idx} match: {metadata.get('name')} (sim: {similarity:.3f}, dist: {distance:.3f})")
-            
-            if similarity > threshold:
-                best_score = similarity
-                best_match = metadata
+            # Check all returned matches
+            for i in range(len(query_result['ids'][0])):
+                distance = query_result['distances'][0][i]
+                similarity = 1.0 - distance
+                metadata = query_result['metadatas'][0][i]
+                
+                print(f"DEBUG: Face {idx} candidate {i}: {metadata.get('name')} (sim: {similarity:.3f})")
+                
+                # Use the best match above threshold
+                if similarity > threshold and similarity > best_score:
+                    best_score = similarity
+                    best_match = metadata
 
         if best_match is None:
             result = {
                 "name": "Unknown", 
                 "relation": "Unidentified Person", 
                 "confidence": float(best_score) if best_score > 0 else 0.0,
-                "bbox": current_bbox
+                "bbox": current_bbox,
+                "face_index": idx
             }
-            print(f"DEBUG: Face {idx} -> Unknown (score: {best_score:.3f if best_score > 0 else 0.0})")
+            score_display = best_score if best_score > 0 else 0.0
+            print(f"DEBUG: Face {idx} -> Unknown (best score: {score_display:.3f})")
             results.append(result)
         else:
             match_result = {
                 "name": best_match["name"],
                 "relation": best_match["relation"],
                 "confidence": float(best_score),
-                "bbox": current_bbox
+                "bbox": current_bbox,
+                "face_index": idx
             }
             # Include contact_id if available
             if "contact_id" in best_match:
                 match_result["contact_id"] = best_match["contact_id"]
             
-            print(f"DEBUG: Face {idx} -> {best_match['name']} (score: {best_score:.3f})")
+            print(f"DEBUG: Face {idx} -> {best_match['name']} (confidence: {best_score:.3f})")
             results.append(match_result)
+    
+    # Sort results by confidence (highest first) for better display
+    results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
     
     print(f"DEBUG: recognize_face - Returning {len(results)} results")
     return results

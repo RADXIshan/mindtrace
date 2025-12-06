@@ -414,8 +414,12 @@ const FaceRecognition = () => {
             const response = await faceApi.recognize(formData);
             const data = response.data;
 
+            console.log("Face recognition response:", data);
+
             const results = Array.isArray(data) ? data : [data];
             const validResults = results.filter(r => r);
+
+            console.log("Valid results:", validResults);
 
             const processedResults = validResults.map((result) => {
                 if (result.bbox) {
@@ -424,9 +428,15 @@ const FaceRecognition = () => {
                 return result;
             });
 
+            console.log("Processed results:", processedResults);
+
             if (processedResults.length > 0) {
                 setRecognitionResult(processedResults);
                 lastResultRef.current = processedResults;
+                
+                // Update debug status with face info
+                const faceNames = processedResults.map(r => r.name).join(", ");
+                setDebugStatus(`Detected: ${faceNames}`);
                 
                 // --- ASR Trigger ---
                 // If we detect a face, start recording if not already
@@ -450,6 +460,7 @@ const FaceRecognition = () => {
                     timeoutRef.current = null;
                 }
             } else {
+                console.log("No faces detected in this frame");
                 setRecognitionResult([]);
                  if (lastResultRef.current && !timeoutRef.current) {
                     timeoutRef.current = setTimeout(() => {

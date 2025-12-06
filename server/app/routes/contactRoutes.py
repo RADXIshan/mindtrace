@@ -111,17 +111,107 @@ def sync_contact_to_chroma(contact_id: int, profile_photo: bytes, name: str, rel
         
     except Exception as e:
         print(f"Error syncing contact {name} to ChromaDB: {e}")
+
+def sync_contact_to_chroma_multiple(contact_id: int, profile_photos: List[bytes], name: str, relationship: str, user_id: int):
+    """
+    Sync a contact's face embeddings from multiple photos to ChromaDB.
+    This creates multiple embeddings for better recognition accuracy.
+    Executed in background.
+    """
+    if not profile_photos:
+        print(f"No profile photos for contact {name}")
+        return
+    
+    try:
+        import time
+        start_time = time.time()
+        
+        # Load face recognition models (should be pre-warmed on startup)
+        app = get_face_app()
+        
+        # Get ChromaDB collection
+        collection = get_face_collection()
+        
+        # Process each photo and collect embeddings
+        all_embeddings = []
+        all_ids = []
+        all_metadatas = []
+        
+        for idx, photo_data in enumerate(profile_photos):
+            # Convert binary data to OpenCV image
+            nparr = np.frombuffer(photo_data, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            if img is None:
+                print(f"Error: Could not decode image {idx+1} for {name}")
+                continue
+            
+            # Extract embedding
+            data_list = detect_and_embed(app, img)
+            
+            if not data_list:
+                print(f"Warning: No face detected in image {idx+1} for {name}")
+                continue
+            
+            # Use the first detected face from each photo
+            data = data_list[0]
+            
+            # Add to batch with unique ID for each photo
+            all_ids.append(f"contact_{contact_id}_photo_{idx}")
+            all_embeddings.append(data["embedding"])
+            all_metadatas.append({
+                "name": name,
+                "relation": relationship,
+                "contact_id": contact_id,
+                "user_id": user_id,
+                "photo_index": idx
+            })
+        
+        if not all_embeddings:
+            print(f"Error: No faces detected in any photos for {name}")
+            return
+        
+        # Upsert all embeddings to ChromaDB
+        collection.upsert(
+            ids=all_ids,
+            embeddings=all_embeddings,
+            metadatas=all_metadatas
+        )
+        
+        total_time = time.time() - start_time
+        print(f"✓ Successfully synced {len(all_embeddings)} embeddings for {name} to ChromaDB (background task, {total_time:.2f}s)")
+        
+    except Exception as e:
+        print(f"Error syncing contact {name} to ChromaDB: {e}")
         # We don't re-raise here because it's a background task
 
 def remove_contact_from_chroma(contact_id: int):
     """
-    Remove a contact's face embedding from ChromaDB.
+    Remove all of a contact's face embeddings from ChromaDB.
+    Handles both single and multiple photo embeddings.
     Executed in background.
     """
     try:
         collection = get_face_collection()
-        collection.delete(ids=[f"contact_{contact_id}"])
-        print(f"Successfully removed contact_{contact_id} from ChromaDB")
+        
+        # Query for all embeddings belonging to this contact
+        try:
+            results = collection.get(
+                where={"contact_id": contact_id}
+            )
+            
+            if results and results['ids']:
+                # Delete all found embeddings
+                collection.delete(ids=results['ids'])
+                print(f"Successfully removed {len(results['ids'])} embeddings for contact_{contact_id} from ChromaDB")
+            else:
+                print(f"No embeddings found for contact_{contact_id} in ChromaDB")
+        except Exception as query_error:
+            # Fallback: try to delete the old single-photo format
+            print(f"Query failed, trying legacy delete: {query_error}")
+            collection.delete(ids=[f"contact_{contact_id}"])
+            print(f"Successfully removed contact_{contact_id} from ChromaDB (legacy format)")
+            
     except Exception as e:
         print(f"Error removing contact from ChromaDB: {e}")
 
@@ -188,16 +278,23 @@ async def create_contact_with_photo(
     email: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     visit_frequency: Optional[str] = Form(None),
-    photo: UploadFile = File(...),
+    photo: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create a contact with a profile photo for face recognition"""
+    """Create a contact with profile photos for face recognition"""
     try:
-        # Read photo as binary data
-        photo_data = await photo.read()
+        # Read all photos as binary data
+        all_photos = []
+        for p in photo:
+            photo_data = await p.read()
+            all_photos.append(photo_data)
         
-        # Create contact with binary photo data
+        # Use the first photo for profile display
+        primary_photo = all_photos[0] if all_photos else None
+        primary_filename = photo[0].filename if photo else None
+        
+        # Create contact with primary photo for display
         db_contact = Contact(
             user_id=current_user.id,
             name=name,
@@ -207,8 +304,8 @@ async def create_contact_with_photo(
             email=email,
             notes=notes,
             visit_frequency=visit_frequency,
-            profile_photo=photo_data,
-            profile_photo_filename=photo.filename,
+            profile_photo=primary_photo,
+            profile_photo_filename=primary_filename,
             avatar=name[:2].upper(),
             color="indigo"
         )
@@ -217,11 +314,11 @@ async def create_contact_with_photo(
         db.commit()
         db.refresh(db_contact)
         
-        # Background sync to ChromaDB
+        # Background sync to ChromaDB with ALL photos for better recognition
         background_tasks.add_task(
-            sync_contact_to_chroma, 
+            sync_contact_to_chroma_multiple, 
             db_contact.id, 
-            photo_data, # Pass raw bytes to avoid detached instance issues
+            all_photos,  # Pass all photos for embedding
             db_contact.name,
             db_contact.relationship_detail or db_contact.relationship,
             db_contact.user_id
@@ -302,11 +399,11 @@ async def update_contact_with_photo(
     email: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     visit_frequency: Optional[str] = Form(None),
-    photo: Optional[UploadFile] = File(None),
+    photo: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update a contact with optional new profile photo"""
+    """Update a contact with optional new profile photos"""
     db_contact = db.query(Contact).filter(Contact.id == contact_id, Contact.user_id == current_user.id).first()
     if not db_contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -330,34 +427,34 @@ async def update_contact_with_photo(
         
         # Handle photo update
         photo_updated = False
-        photo_data = None
-        if photo:
-            # Read photo as binary data
-            photo_data = await photo.read()
-            db_contact.profile_photo = photo_data
-            db_contact.profile_photo_filename = photo.filename
+        all_photos = []
+        if photo and len(photo) > 0:
+            # Read all photos as binary data
+            for p in photo:
+                photo_data = await p.read()
+                all_photos.append(photo_data)
+            
+            # Use first photo for profile display
+            db_contact.profile_photo = all_photos[0]
+            db_contact.profile_photo_filename = photo[0].filename
             photo_updated = True
         
         db.commit()
         db.refresh(db_contact)
         
-        # Sync to ChromaDB if photo was updated or if contact has a photo
-        if photo_updated:
-             background_tasks.add_task(
-                sync_contact_to_chroma, 
+        # Sync to ChromaDB if photos were updated
+        if photo_updated and all_photos:
+            # Remove old embeddings first
+            background_tasks.add_task(remove_contact_from_chroma, db_contact.id)
+            # Add new embeddings from all photos
+            background_tasks.add_task(
+                sync_contact_to_chroma_multiple, 
                 db_contact.id, 
-                photo_data, 
+                all_photos, 
                 db_contact.name,
                 db_contact.relationship_detail or db_contact.relationship,
                 db_contact.user_id
             )
-        elif db_contact.profile_photo:
-             # If we just updated metadata, we might want to update metadata in Chroma without re-embedding
-             # For simplicity, we re-embed if we have the photo data in DB, but db_contact.profile_photo is deferred loaded?
-             # Usually standard configured SQLA loads it.
-             # Ideally we should implement a `update_metadata` function for Chroma.
-             # For now, let's just leave it or re-sync if critical.
-             pass
 
         return contact_to_response(db_contact, request)
         

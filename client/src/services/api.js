@@ -44,6 +44,11 @@ export const contactsApi = {
     },
   }),
   update: (id, data) => api.put(`/contacts/${id}`, data),
+  updateWithPhoto: (id, formData) => api.put(`/contacts/${id}/with-photo`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
   delete: (id) => api.delete(`/contacts/${id}`),
 };
 

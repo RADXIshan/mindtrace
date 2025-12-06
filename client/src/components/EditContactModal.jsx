@@ -89,19 +89,46 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
-    const contactData = {
-      name: formData.name,
-      relationship: formData.relationship,
-      relationship_detail: formData.relationship_detail,
-      notes: formData.notes,
-      phone_number: formData.phone_number,
-      email: formData.email,
-      visit_frequency: formData.visit_frequency,
-      avatar: contact.avatar || formData.name.substring(0, 2).toUpperCase(),
-      color: contact.color || 'indigo'
-    };
+    let promise;
     
-    const promise = contactsApi.update(contact.id, contactData);
+    // Check if new photos were added
+    const hasNewPhotos = formData.photos.some(photo => photo instanceof File);
+    
+    if (hasNewPhotos) {
+      // Use the with-photo endpoint if new photos were added
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('relationship', formData.relationship);
+      if (formData.relationship_detail) formDataToSend.append('relationship_detail', formData.relationship_detail);
+      if (formData.notes) formDataToSend.append('notes', formData.notes);
+      if (formData.phone_number) formDataToSend.append('phone_number', formData.phone_number);
+      if (formData.email) formDataToSend.append('email', formData.email);
+      if (formData.visit_frequency) formDataToSend.append('visit_frequency', formData.visit_frequency);
+      
+      // Send ALL new photos (File objects only)
+      formData.photos.forEach((photo) => {
+        if (photo instanceof File) {
+          formDataToSend.append('photo', photo);
+        }
+      });
+      
+      promise = contactsApi.updateWithPhoto(contact.id, formDataToSend);
+    } else {
+      // No new photos, use regular update endpoint
+      const contactData = {
+        name: formData.name,
+        relationship: formData.relationship,
+        relationship_detail: formData.relationship_detail,
+        notes: formData.notes,
+        phone_number: formData.phone_number,
+        email: formData.email,
+        visit_frequency: formData.visit_frequency,
+        avatar: contact.avatar || formData.name.substring(0, 2).toUpperCase(),
+        color: contact.color || 'indigo'
+      };
+      
+      promise = contactsApi.update(contact.id, contactData);
+    }
 
     toast.promise(promise, {
       loading: 'Updating contact...',
@@ -111,7 +138,7 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
           onUpdate();
         }
         onClose();
-        return 'Contact updated successfully!';
+        return hasNewPhotos ? 'Contact updated with new photos!' : 'Contact updated successfully!';
       },
       error: (err) => {
         console.error('Error updating contact:', err);
@@ -254,7 +281,7 @@ const EditContactModal = ({ isOpen, onClose, contact, onUpdate }) => {
                 <CurrentProfilePhoto photoUrl={contact.profile_photo_url} />
               )}
               <p className="text-sm text-gray-600 mb-4">
-                Upload at least 3 photos for better facial recognition accuracy
+                Upload multiple photos for better facial recognition accuracy. The first photo will be used as the profile picture.
               </p>
               <input
                 ref={fileInputRef}

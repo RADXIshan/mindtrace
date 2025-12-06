@@ -120,4 +120,8 @@ export const asrApi = {
   syncConversations: (userId) => api.post(`/asr/sync-conversations?user_id=${userId}`),
 };
 
+export const statsApi = {
+  getDashboard: () => api.get('/stats/dashboard'),
+};
+
 export default api;

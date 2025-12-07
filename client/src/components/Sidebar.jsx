@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Clock, Users, Bell, Calendar, AlertTriangle, Shield, Settings, HelpCircle, X, LogOut } from 'lucide-react';
+import { Home, Clock, Users, Bell, Calendar, AlertTriangle, Shield, Settings, HelpCircle, X, LogOut, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { logout } from '../services/auth';
 import { userApi } from '../services/api';
@@ -15,6 +15,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { icon: Users, label: 'Contacts', path: '/dashboard/contacts' },
     { icon: Bell, label: 'Alerts', path: '/dashboard/alerts' },
     { icon: Calendar, label: 'Reminders', path: '/dashboard/reminders' },
+    { icon: Sparkles, label: 'AI Summarizer', path: '/dashboard/ai-assistant' },
     { icon: Shield, label: 'SOS Alerts', path: '/dashboard/sos-alerts' },
     { icon: AlertTriangle, label: 'SOS Settings', path: '/dashboard/sos' },
   ];

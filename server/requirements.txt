@@ -4,10 +4,13 @@ uvicorn
 openai-whisper
 sounddevice
 webrtcvad-wheels
-numpy>=2.0
+numpy<2.0
 python-dotenv>=1.2.1
 
 # --- AI / NLP / LangChain ---
+torch
+torchvision
+torchaudio
 transformers
 langchain
 langchain-huggingface

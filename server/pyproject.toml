@@ -72,4 +72,7 @@ dependencies = [
     "uvicorn>=0.38.0",
     "wcwidth==0.2.14",
     "webrtcvad-wheels>=2.0.14",
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+    "torchaudio>=2.9.1",
 ]

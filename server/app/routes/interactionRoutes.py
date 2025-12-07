@@ -21,7 +21,6 @@ class InteractionBase(BaseModel):
     summary: Optional[str] = None
     full_details: Optional[str] = None
     key_topics: Optional[List[str]] = []
-    mood: Optional[str] = "neutral"
     duration: Optional[str] = None
     location: Optional[str] = None
     starred: Optional[bool] = False
@@ -47,15 +46,11 @@ def get_interactions(
     skip: int = 0, 
     limit: int = 100, 
     search: Optional[str] = None,
-    mood: Optional[str] = None,
     starred: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(Interaction).filter(Interaction.user_id == current_user.id)
-    
-    if mood and mood != 'all':
-        query = query.filter(Interaction.mood == mood)
     
     if starred:
         query = query.filter(Interaction.starred == True)
@@ -143,8 +138,7 @@ def create_interaction(
                 "user_id": current_user.id,
                 "contact_id": db_interaction.contact_id or -1,
                 "contact_name": db_interaction.contact_name or "Unknown",
-                "timestamp": db_interaction.timestamp.isoformat(),
-                "mood": db_interaction.mood or "neutral"
+                "timestamp": db_interaction.timestamp.isoformat()
             }]
         )
         print(f"Indexed interaction {db_interaction.id} in ChromaDB")
@@ -202,8 +196,7 @@ def sync_interactions_to_chroma(
                 "user_id": current_user.id,
                 "contact_id": interaction.contact_id or -1,
                 "contact_name": interaction.contact_name or "Unknown",
-                "timestamp": interaction.timestamp.isoformat() if interaction.timestamp else "",
-                "mood": interaction.mood or "neutral"
+                "timestamp": interaction.timestamp.isoformat() if interaction.timestamp else ""
             })
             
         if ids:
@@ -292,7 +285,6 @@ def search_interactions(
                     "summary": interaction.summary,
                     "full_details": interaction.full_details,
                     "key_topics": interaction.key_topics,
-                    "mood": interaction.mood,
                     "timestamp": interaction.timestamp.isoformat() if interaction.timestamp else None,
                     "duration": interaction.duration,
                     "location": interaction.location,

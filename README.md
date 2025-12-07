@@ -112,7 +112,7 @@ MindTrace is a production-ready AI memory assistant designed for Ray-Ban Meta sm
    - **Purpose**: Semantic search across interaction history
    - **Embedding**: all-MiniLM-L6-v2 (384-dim, auto-generated)
    - **Distance Metric**: Cosine similarity
-   - **Metadata**: interaction_id, user_id, contact_id, timestamp, mood
+   - **Metadata**: interaction_id, user_id, contact_id, timestamp
    - **Use Cases**: "Find conversations about medication", "What did we discuss about travel?"
 
 **Configuration:**

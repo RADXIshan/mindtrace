@@ -52,8 +52,7 @@ def test_chromadb_connection():
                 "user_id": 1,
                 "contact_id": -1,
                 "contact_name": "Test Contact",
-                "timestamp": "2024-01-01T00:00:00",
-                "mood": "neutral"
+                "timestamp": "2024-01-01T00:00:00"
             }]
         )
         print("✓ Successfully stored test conversation with embeddings")

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, X, MapPin, Clock, Star, RefreshCw } from 'lucide-react';
+import { Search, Download, X, MapPin, Clock, Star, RefreshCw } from 'lucide-react';
 import { interactionsApi, asrApi, userApi } from '../services/api';
 import toast from 'react-hot-toast';
+import ContactAvatar from '../components/ContactAvatar';
 
 const InteractionHistory = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,27 +107,7 @@ const InteractionHistory = () => {
     });
   };
 
-  const getMoodColor = (mood) => {
-    const colors = {
-      happy: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      neutral: 'bg-blue-100 text-blue-700 border-blue-200',
-      sad: 'bg-gray-100 text-gray-700 border-gray-200',
-      anxious: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      confused: 'bg-red-100 text-red-700 border-red-200',
-    };
-    return colors[mood] || colors.neutral;
-  };
 
-  const getMoodEmoji = (mood) => {
-    const emojis = {
-      happy: '😊',
-      neutral: '😐',
-      sad: '😢',
-      anxious: '😰',
-      confused: '😕',
-    };
-    return emojis[mood] || emojis.neutral;
-  };
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
@@ -257,9 +238,16 @@ const InteractionHistory = () => {
             <div className="p-6">
               <div className="flex items-start gap-4">
                 {/* Avatar */}
-                <div className={`w-14 h-14 rounded-full bg-${interaction.contact_color || 'indigo'}-500 flex items-center justify-center text-white font-semibold text-lg shrink-0`}>
-                  {interaction.contact_avatar || interaction.contact_name?.substring(0, 2).toUpperCase() || '??'}
-                </div>
+                <ContactAvatar 
+                  contact={{
+                    name: interaction.contact_name,
+                    avatar: interaction.contact_avatar,
+                    color: interaction.contact_color,
+                    profile_photo_url: interaction.contact_id ? `/contacts/${interaction.contact_id}/photo` : null
+                  }}
+                  size="lg"
+                  className="shrink-0"
+                />
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
@@ -297,9 +285,6 @@ const InteractionHistory = () => {
 
                   {/* Meta Info */}
                   <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                    <div className={`px-3 py-1 rounded-lg text-xs font-medium border ${getMoodColor(interaction.mood)}`}>
-                      {getMoodEmoji(interaction.mood)} {interaction.mood}
-                    </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
                       {formatTimestamp(interaction.timestamp)}
@@ -336,9 +321,15 @@ const InteractionHistory = () => {
           <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-full bg-${selectedInteraction.contact_color || 'indigo'}-500 flex items-center justify-center text-white font-semibold text-lg`}>
-                  {selectedInteraction.contact_avatar || selectedInteraction.contact_name?.substring(0, 2).toUpperCase() || '??'}
-                </div>
+                <ContactAvatar 
+                  contact={{
+                    name: selectedInteraction.contact_name,
+                    avatar: selectedInteraction.contact_avatar,
+                    color: selectedInteraction.contact_color,
+                    profile_photo_url: selectedInteraction.contact_id ? `/contacts/${selectedInteraction.contact_id}/photo` : null
+                  }}
+                  size="lg"
+                />
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">{selectedInteraction.contact_name || 'Unknown'}</h2>
                   <p className="text-gray-500">{selectedInteraction.contact_relationship || 'Contact'}</p>
@@ -368,12 +359,6 @@ const InteractionHistory = () => {
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-xs text-gray-500 mb-1">Location</p>
                   <p className="font-semibold text-gray-900">{selectedInteraction.location || 'Unknown'}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-xs text-gray-500 mb-1">Emotional Tone</p>
-                  <span className={`inline-flex px-3 py-1 rounded-lg text-sm font-medium border ${getMoodColor(selectedInteraction.mood)}`}>
-                    {getMoodEmoji(selectedInteraction.mood)} {selectedInteraction.mood}
-                  </span>
                 </div>
               </div>
 

@@ -211,7 +211,7 @@ If you need to list things, just use simple dashes or numbers on new lines.
    - Review past conversations and meetings
    - See summaries of interactions
    - Track key topics discussed
-   - Note mood and duration of interactions
+   - Note duration and location of interactions
 
 4. **Alerts & Notifications:**
    - View system alerts (visitor arrivals, missed medications, etc.)

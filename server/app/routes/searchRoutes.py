@@ -47,7 +47,6 @@ class InteractionSearchResponse(BaseModel):
     summary: Optional[str] = None
     full_details: Optional[str] = None
     key_topics: Optional[List[str]] = []
-    mood: Optional[str] = None
     timestamp: datetime
     contact_name: Optional[str] = None
     
@@ -135,9 +134,8 @@ def search_pages(query: str) -> List[PageMatch]:
             "description": "Review and analyze past conversations",
             "content": [
                 "interactions", "history", "conversations", "messages", "chat",
-                "search", "filter", "mood", "happy", "sad", "neutral", "anxious", "confused",
-                "starred", "export", "download", "timeline", "summary", "details",
-                "key topics", "location", "duration", "emotional tone", "conversation"
+                "search", "filter", "starred", "export", "download", "timeline", "summary", "details",
+                "key topics", "location", "duration", "conversation"
             ]
         },
         {
@@ -347,7 +345,6 @@ def search_all(
         Interaction.summary.ilike(search_term),
         Interaction.full_details.ilike(search_term),
         Interaction.location.ilike(search_term),
-        Interaction.mood.ilike(search_term),
         Interaction.duration.ilike(search_term)
     ]
     

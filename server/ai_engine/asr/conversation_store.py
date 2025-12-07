@@ -61,7 +61,6 @@ class ConversationStore:
                     contact_name=profile_id,
                     summary=summary,
                     full_details=transcript,
-                    mood="neutral",
                     timestamp=timestamp
                 )
                 
@@ -91,8 +90,7 @@ class ConversationStore:
                     "user_id": int(user_id) if user_id else -1,
                     "contact_id": int(contact_id) if contact_id else -1,
                     "contact_name": str(profile_id),
-                    "timestamp": entry["timestamp"],
-                    "mood": "neutral"
+                    "timestamp": entry["timestamp"]
                 }
                 
                 # Add to ChromaDB - this will automatically generate embeddings

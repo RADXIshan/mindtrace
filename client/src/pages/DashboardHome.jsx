@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Users, Bell, Calendar, TrendingUp, Activity, Plus, ArrowRight, AlertCircle, Glasses } from 'lucide-react';
+import { Users, Bell, Calendar, Activity, Plus, ArrowRight, AlertCircle, Glasses } from 'lucide-react';
 import AddContactModal from '../components/AddContactModal';
 import AddReminderModal from '../components/AddReminderModal';
-import { interactionsApi, remindersApi, alertsApi, userApi, statsApi } from '../services/api';
+import ContactAvatar from '../components/ContactAvatar';
+import { interactionsApi, remindersApi, userApi, statsApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { formatTime12Hour } from '../utils/timeFormat';
 
@@ -58,17 +59,6 @@ const DashboardHome = () => {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const getMoodEmoji = (mood) => {
-    const emojis = {
-      happy: '😊',
-      neutral: '😐',
-      sad: '😢',
-      anxious: '😰',
-      confused: '😕',
-    };
-    return emojis[mood] || emojis.neutral;
-  };
 
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
@@ -144,7 +134,7 @@ const DashboardHome = () => {
           </button>
 
           <button
-            onClick={() => navigate('/dashboard/sos')}
+            onClick={() => navigate('/dashboard/sos-alerts')}
             className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-red-200 
               bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all group"
           >
@@ -243,9 +233,16 @@ const DashboardHome = () => {
                   onClick={() => navigate('/dashboard/interactions')}
                 >
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-full bg-${interaction.contact_color || 'indigo'}-500 flex items-center justify-center text-white font-semibold shrink-0`}>
-                      {interaction.contact_avatar || interaction.contact_name?.substring(0, 2).toUpperCase() || '??'}
-                    </div>
+                    <ContactAvatar
+                      contact={{
+                        name: interaction.contact_name,
+                        avatar: interaction.contact_avatar,
+                        color: interaction.contact_color,
+                        profile_photo_url: interaction.contact_photo_url
+                      }}
+                      size="md"
+                      className="shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-2">
                         <div>
@@ -255,9 +252,6 @@ const DashboardHome = () => {
                           <p className="text-sm text-gray-500">{interaction.contact_relationship || 'Contact'}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xl">
-                            {getMoodEmoji(interaction.mood)}
-                          </span>
                           <span className="text-sm text-gray-500">{formatTime(interaction.timestamp)}</span>
                         </div>
                       </div>

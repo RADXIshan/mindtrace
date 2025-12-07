@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Any
 from pydantic import BaseModel
@@ -21,7 +21,6 @@ class InteractionBase(BaseModel):
     summary: Optional[str] = None
     full_details: Optional[str] = None
     key_topics: Optional[List[str]] = []
-    mood: Optional[str] = "neutral"
     duration: Optional[str] = None
     location: Optional[str] = None
     starred: Optional[bool] = False
@@ -38,24 +37,22 @@ class InteractionResponse(InteractionBase):
     contact_avatar: Optional[str] = None
     contact_relationship: Optional[str] = None
     contact_color: Optional[str] = None
+    contact_photo_url: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 @router.get("/", response_model=List[InteractionResponse])
 def get_interactions(
+    request: Request,
     skip: int = 0, 
     limit: int = 100, 
     search: Optional[str] = None,
-    mood: Optional[str] = None,
     starred: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(Interaction).filter(Interaction.user_id == current_user.id)
-    
-    if mood and mood != 'all':
-        query = query.filter(Interaction.mood == mood)
     
     if starred:
         query = query.filter(Interaction.starred == True)
@@ -80,13 +77,18 @@ def get_interactions(
                 resp.contact_avatar = contact.avatar
                 resp.contact_relationship = contact.relationship_detail or contact.relationship
                 resp.contact_color = contact.color
+                # Add photo URL if contact has a photo
+                if contact.profile_photo:
+                    base_url = str(request.base_url).rstrip('/')
+                    resp.contact_photo_url = f"{base_url}/contacts/{contact.id}/photo"
         results.append(resp)
         
     return results
 
 @router.get("/{interaction_id}", response_model=InteractionResponse)
 def get_interaction(
-    interaction_id: int, 
+    interaction_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -101,6 +103,10 @@ def get_interaction(
             resp.contact_avatar = contact.avatar
             resp.contact_relationship = contact.relationship_detail or contact.relationship
             resp.contact_color = contact.color
+            # Add photo URL if contact has a photo
+            if contact.profile_photo:
+                base_url = str(request.base_url).rstrip('/')
+                resp.contact_photo_url = f"{base_url}/contacts/{contact.id}/photo"
             
     return resp
 
@@ -143,8 +149,7 @@ def create_interaction(
                 "user_id": current_user.id,
                 "contact_id": db_interaction.contact_id or -1,
                 "contact_name": db_interaction.contact_name or "Unknown",
-                "timestamp": db_interaction.timestamp.isoformat(),
-                "mood": db_interaction.mood or "neutral"
+                "timestamp": db_interaction.timestamp.isoformat()
             }]
         )
         print(f"Indexed interaction {db_interaction.id} in ChromaDB")
@@ -202,8 +207,7 @@ def sync_interactions_to_chroma(
                 "user_id": current_user.id,
                 "contact_id": interaction.contact_id or -1,
                 "contact_name": interaction.contact_name or "Unknown",
-                "timestamp": interaction.timestamp.isoformat() if interaction.timestamp else "",
-                "mood": interaction.mood or "neutral"
+                "timestamp": interaction.timestamp.isoformat() if interaction.timestamp else ""
             })
             
         if ids:
@@ -220,6 +224,7 @@ def sync_interactions_to_chroma(
 
 @router.get("/search")
 def search_interactions(
+    request: Request,
     query: str,
     limit: int = 10,
     db: Session = Depends(get_db),
@@ -261,6 +266,7 @@ def search_interactions(
                 })
         
         # Fetch full interaction details from database
+        base_url = str(request.base_url).rstrip('/')
         search_results = []
         for item in interaction_ids:
             interaction = db.query(Interaction).filter(
@@ -273,6 +279,7 @@ def search_interactions(
                 contact_avatar = None
                 contact_relationship = None
                 contact_color = None
+                contact_photo_url = None
                 
                 if interaction.contact_id:
                     contact = db.query(Contact).filter(Contact.id == interaction.contact_id).first()
@@ -280,6 +287,9 @@ def search_interactions(
                         contact_avatar = contact.avatar
                         contact_relationship = contact.relationship_detail or contact.relationship
                         contact_color = contact.color
+                        # Add photo URL if contact has a photo
+                        if contact.profile_photo:
+                            contact_photo_url = f"{base_url}/contacts/{contact.id}/photo"
                 
                 result = {
                     "id": interaction.id,
@@ -289,10 +299,10 @@ def search_interactions(
                     "contact_avatar": contact_avatar,
                     "contact_relationship": contact_relationship,
                     "contact_color": contact_color,
+                    "contact_photo_url": contact_photo_url,
                     "summary": interaction.summary,
                     "full_details": interaction.full_details,
                     "key_topics": interaction.key_topics,
-                    "mood": interaction.mood,
                     "timestamp": interaction.timestamp.isoformat() if interaction.timestamp else None,
                     "duration": interaction.duration,
                     "location": interaction.location,

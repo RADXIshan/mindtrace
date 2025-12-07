@@ -54,7 +54,6 @@ class Interaction(Base):
     summary = Column(Text, nullable=True)
     full_details = Column(Text, nullable=True)
     key_topics = Column(JSON, default=list) # List of strings
-    mood = Column(String, default="neutral")
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     duration = Column(String, nullable=True)
     location = Column(String, nullable=True)

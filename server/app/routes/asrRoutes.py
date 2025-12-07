@@ -96,7 +96,6 @@ async def sync_conversations_to_db(
                 contact_name=profile_id,
                 summary=transcript[:200] + "..." if len(transcript) > 200 else transcript,
                 full_details=transcript,
-                mood="neutral",
                 timestamp=timestamp
             )
             
@@ -115,8 +114,7 @@ async def sync_conversations_to_db(
                         "user_id": user_id,
                         "contact_id": contact_id or -1,
                         "contact_name": profile_id,
-                        "timestamp": timestamp,
-                        "mood": "neutral"
+                        "timestamp": timestamp
                     }]
                 )
             except Exception as e:
@@ -209,7 +207,6 @@ async def search_conversations(
                     "summary": interaction.summary,
                     "full_details": interaction.full_details,
                     "key_topics": interaction.key_topics,
-                    "mood": interaction.mood,
                     "timestamp": interaction.timestamp.isoformat() if interaction.timestamp else None,
                     "duration": interaction.duration,
                     "location": interaction.location,

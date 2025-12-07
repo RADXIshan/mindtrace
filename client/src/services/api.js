@@ -129,4 +129,22 @@ export const statsApi = {
   getDashboard: () => api.get('/stats/dashboard'),
 };
 
+export const aiApi = {
+  // Summarization
+  summarize: (data) => api.post('/ai/summarize', data),
+  summarizeContact: (contactId) => api.post(`/ai/summarize/contact/${contactId}`),
+  
+  // RAG queries
+  ragQuery: (question, nResults = 5, includeContext = true) => 
+    api.post('/ai/rag/query', { question, n_results: nResults, include_context: includeContext }),
+  ragMultiTurn: (question, conversationHistory = [], nResults = 5) =>
+    api.post('/ai/rag/multi-turn', { question, conversation_history: conversationHistory, n_results: nResults }),
+  
+  // Insights
+  getInsights: (topic = null) => api.post('/ai/insights', { topic }),
+  
+  // Health check
+  healthCheck: () => api.get('/ai/health'),
+};
+
 export default api;

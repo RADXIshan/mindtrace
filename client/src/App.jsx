@@ -18,6 +18,7 @@ import SOSSettings from './pages/SOSSettings'
 import SOSPage from './components/sos/SOSPage'
 import ProfileSettings from './pages/ProfileSettings'
 import HelpSupport from './pages/HelpSupport'
+import AiSummarizer from './pages/AiSummarizer'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
@@ -59,6 +60,7 @@ const router = createBrowserRouter(
         <Route path='reminders' element={<Reminders />} />
         <Route path='sos-alerts' element={<SOSPage />} />
         <Route path='sos' element={<SOSSettings />} />
+        <Route path='ai-assistant' element={<AiSummarizer />} />
         <Route path='settings' element={<ProfileSettings />} />
         <Route path='help' element={<HelpSupport />} />
       </Route>

@@ -33,20 +33,97 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
         };
     };
 
-    const TagContent = ({ result }) => (
-        <div className="bg-white/90 backdrop-blur-xl border border-white/50 p-6 rounded-2xl shadow-xl text-gray-900 min-w-[200px]">
-            <div className="flex flex-col">
-                <span className="text-xs font-bold tracking-wider uppercase text-indigo-600 mb-2">
-                    {result.name === 'Unknown' ? 'Detected' : 'Identified'}
-                </span>
-                <h1 className="text-3xl font-bold leading-none tracking-tight mb-1">{result.name}</h1>
-                <span className="text-lg font-medium opacity-70 text-gray-600">{result.relation}</span>
+    const formatISTTime = (timestamp) => {
+        if (!timestamp) return null;
+        try {
+            const date = new Date(timestamp);
+            return new Intl.DateTimeFormat('en-IN', {
+                weekday: 'short',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
+            }).format(date);
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const TagContent = ({ result, variant = 'light' }) => {
+        const lastSeen = formatISTTime(result.last_seen_timestamp);
+        const summary = result.last_conversation_summary;
+        
+        const isDark = variant === 'dark';
+        
+        // Dynamic styles based on variant
+        const containerClass = isDark 
+            ? "bg-black/60 backdrop-blur-xl border border-white/20 p-5 rounded-2xl shadow-2xl text-white min-w-[260px] max-w-[300px]"
+            : "bg-white/90 backdrop-blur-xl border border-white/50 p-6 rounded-2xl shadow-xl text-gray-900 min-w-[280px] max-w-[320px]";
+            
+        const labelClass = isDark
+            ? "text-[10px] font-bold tracking-wider uppercase text-indigo-400 mb-1 block"
+            : "text-xs font-bold tracking-wider uppercase text-indigo-600 mb-1 block";
+            
+        const nameClass = isDark
+            ? "text-2xl font-bold leading-none tracking-tight mb-0.5"
+            : "text-3xl font-bold leading-none tracking-tight mb-1";
+            
+        const relationClass = isDark
+            ? "text-sm font-medium opacity-80 text-gray-300 block"
+            : "text-lg font-medium opacity-70 text-gray-600 block";
+            
+        const metaLabelClass = isDark
+            ? "text-[10px] font-bold uppercase text-gray-400 mt-0.5 whitespace-nowrap"
+            : "text-xs font-bold uppercase text-indigo-400 mt-0.5 whitespace-nowrap";
+            
+        const metaTextClass = isDark
+            ? "text-xs font-medium text-gray-200"
+            : "text-sm font-medium text-gray-700";
+            
+        const topicLabelClass = isDark
+             ? "text-[10px] font-bold uppercase text-gray-400"
+             : "text-xs font-bold uppercase text-indigo-400";
+             
+        const topicTextClass = isDark
+            ? "text-[11px] text-gray-300 leading-snug line-clamp-2 italic"
+            : "text-xs text-gray-600 leading-snug line-clamp-2 italic";
+
+        return (
+            <div className={containerClass}>
+                <div className="flex flex-col gap-2">
+                    <div>
+                        <span className={labelClass}>
+                            {result.name === 'Unknown' ? 'Detected' : 'Identified'}
+                        </span>
+                        <h1 className={nameClass}>{result.name}</h1>
+                        <span className={relationClass}>{result.relation}</span>
+                    </div>
+
+                    {(lastSeen || summary) && (
+                        <div className={`mt-2 pt-2 border-t flex flex-col gap-2 ${isDark ? 'border-white/10' : 'border-gray-200/50'}`}>
+                            {lastSeen && (
+                                <div className="flex items-start gap-2">
+                                    <span className={metaLabelClass}>Last Met</span>
+                                    <span className={metaTextClass}>{lastSeen}</span>
+                                </div>
+                            )}
+                            {summary && (
+                                <div className="flex flex-col gap-1">
+                                    <span className={topicLabelClass}>Last Topic</span>
+                                    <p className={topicTextClass}>
+                                        "{summary}"
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+                {/* Connecting Line */}
+                <div className={`absolute top-8 left-0 -translate-x-full h-px ${isDark ? 'w-8 bg-white/30' : 'w-10 bg-white/60'}`} />
+                <div className={`absolute top-8 -left-1 w-2 h-2 rounded-full ${isDark ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]'}`} />
             </div>
-            {/* Connecting Line */}
-            <div className="absolute top-8 -left-10 w-10 h-px bg-white/60" />
-            <div className="absolute top-8 -left-1 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
-        </div>
-    );
+        );
+    };
 
     if (mode === 'standard') {
         return (
@@ -97,7 +174,7 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
                 {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => (
                     result.position && (
                         <div key={`tag-${result.name}-${result.confidence}-${index}`} style={getTagStyle(result.position, index, recognitionResult.length)}>
-                            <TagContent result={result} />
+                            <TagContent result={result} variant="light" />
                         </div>
                     )
                 ))}
@@ -179,13 +256,7 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
             {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => (
                 result.position && (
                     <div key={`tag-${result.name}-${result.confidence}-${index}`} style={getTagStyle(result.position, index, recognitionResult.length)}>
-                        <div className="bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/20 text-white shadow-2xl">
-                            <div className="text-2xl font-bold">{result.name}</div>
-                            <div className="text-base font-medium opacity-80">{result.relation}</div>
-                        </div>
-                        {/* Connecting Line */}
-                        <div className="absolute top-1/2 -left-8 w-8 h-px bg-white/30" />
-                        <div className="absolute top-1/2 -left-1 w-1.5 h-1.5 bg-white rounded-full" />
+                        <TagContent result={result} variant="dark" />
                     </div>
                 )
             ))}

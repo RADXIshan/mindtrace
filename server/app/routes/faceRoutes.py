@@ -54,15 +54,31 @@ async def recognize_face_endpoint(
         else:
             print("DEBUG: No faces detected in frame - returning empty array")
         
-        # If contacts are recognized, update their last_seen timestamp
+        # If contacts are recognized, enrich with details AND update their last_seen timestamp
         if result:
+            from datetime import datetime, timezone
+            from ..models import Interaction
+            
             for res in result:
                 if res.get("name") != "Unknown" and "contact_id" in res:
                     contact = db.query(Contact).filter(
                         Contact.id == res["contact_id"]
                     ).first()
+                    
                     if contact:
-                        from datetime import datetime, timezone
+                        # 1. Capture the PREVIOUS last_seen time before we update it
+                        # We want to show when they *last* met, not "just now"
+                        last_seen_time = contact.last_seen
+                        res["last_seen_timestamp"] = last_seen_time.isoformat() if last_seen_time else None
+                        
+                        # 2. Fetch the last interaction summary
+                        last_interaction = db.query(Interaction).filter(
+                            Interaction.contact_id == contact.id
+                        ).order_by(Interaction.timestamp.desc()).first()
+                        
+                        res["last_conversation_summary"] = last_interaction.summary if last_interaction else None
+                        
+                        # 3. Update last_seen to NOW
                         contact.last_seen = datetime.now(timezone.utc)
             db.commit()
         

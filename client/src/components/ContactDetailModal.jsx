@@ -8,7 +8,7 @@ import { formatToIST } from '../utils/timeFormat';
 
 const ContactDetailModal = ({ contact, onClose, onEdit }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
+
   const formatLastSeen = (timestamp) => {
     if (!timestamp) return 'Never';
     return formatToIST(timestamp);
@@ -39,10 +39,10 @@ const ContactDetailModal = ({ contact, onClose, onEdit }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6">
       <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <ContactAvatar contact={contact} size="lg" />
             <div>
@@ -59,7 +59,7 @@ const ContactDetailModal = ({ contact, onClose, onEdit }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+        <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {/* Stats Grid */}
           <div className="grid md:grid-cols-2 gap-6 mb-6">
             <div className="bg-gray-50 rounded-xl p-4">
@@ -110,7 +110,7 @@ const ContactDetailModal = ({ contact, onClose, onEdit }) => {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-gray-200 flex gap-3">
+        <div className="p-4 md:p-6 border-t border-gray-200 flex gap-3">
           <button
             onClick={handleEdit}
             className="flex-1 px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"

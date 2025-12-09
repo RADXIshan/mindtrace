@@ -162,7 +162,7 @@ const SOSSettings = () => {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
@@ -266,7 +266,7 @@ const SOSSettings = () => {
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Alert Settings</h2>
-            
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -377,7 +377,7 @@ const SOSSettings = () => {
               <div>
                 <h3 className="font-semibold text-blue-900 mb-2">Important</h3>
                 <p className="text-sm text-blue-800">
-                  Emergency contacts will be notified immediately when an SOS alert is triggered. 
+                  Emergency contacts will be notified immediately when an SOS alert is triggered.
                   Make sure all contact information is accurate and up to date.
                 </p>
               </div>

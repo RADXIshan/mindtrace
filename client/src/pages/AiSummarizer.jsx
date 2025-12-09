@@ -5,13 +5,13 @@ import toast from 'react-hot-toast';
 
 const AiSummarizer = () => {
   const [activeTab, setActiveTab] = useState('chat');
-  
+
   // Chat/RAG state
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
-  
+
   // Summarize state
   const [summaryType, setSummaryType] = useState('brief');
   const [summaryDays, setSummaryDays] = useState(7);
@@ -19,7 +19,7 @@ const AiSummarizer = () => {
   const [summaryResult, setSummaryResult] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [contacts, setContacts] = useState([]);
-  
+
   // Insights state
   const [insightsTopic, setInsightsTopic] = useState('');
   const [insightsResult, setInsightsResult] = useState(null);
@@ -48,7 +48,7 @@ const AiSummarizer = () => {
 
     const userMessage = chatInput.trim();
     setChatInput('');
-    
+
     const newMessages = [...chatMessages, { role: 'user', content: userMessage }];
     setChatMessages(newMessages);
     setChatLoading(true);
@@ -60,17 +60,17 @@ const AiSummarizer = () => {
       })).filter(item => item.question || item.answer);
 
       const response = await aiApi.ragMultiTurn(userMessage, conversationHistory);
-      
-      setChatMessages([...newMessages, { 
-        role: 'assistant', 
+
+      setChatMessages([...newMessages, {
+        role: 'assistant',
         content: response.data.answer,
-        sources: response.data.sources 
+        sources: response.data.sources
       }]);
     } catch (error) {
       console.error("Error in chat:", error);
-      
+
       let errorMessage = "I'm sorry, I encountered an error. ";
-      
+
       if (error.response?.status === 404) {
         errorMessage = "AI service not available. Please restart the server to load AI routes. See RESTART_SERVER.md for instructions.";
         toast.error("Server needs restart");
@@ -83,10 +83,10 @@ const AiSummarizer = () => {
       } else {
         toast.error("Failed to get response");
       }
-      
-      setChatMessages([...newMessages, { 
-        role: 'assistant', 
-        content: errorMessage 
+
+      setChatMessages([...newMessages, {
+        role: 'assistant',
+        content: errorMessage
       }]);
     } finally {
       setChatLoading(false);
@@ -107,7 +107,7 @@ const AiSummarizer = () => {
       toast.success('Summary generated!');
     } catch (error) {
       console.error("Error generating summary:", error);
-      
+
       if (error.response?.status === 404) {
         toast.error("AI service not available. Please restart the server.");
       } else if (error.response?.status === 500) {
@@ -128,7 +128,7 @@ const AiSummarizer = () => {
       toast.success('Insights generated!');
     } catch (error) {
       console.error("Error generating insights:", error);
-      
+
       if (error.response?.status === 404) {
         toast.error("AI service not available. Please restart the server.");
       } else if (error.response?.status === 500) {
@@ -164,13 +164,13 @@ const AiSummarizer = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl border border-gray-200 mb-6">
-        <div className="flex border-b border-gray-200">
+      <div className="bg-white rounded-2xl border border-gray-200 mb-6 overflow-hidden">
+        <div className="flex border-b border-gray-200 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 px-6 py-4 font-medium transition-all duration-200 flex items-center justify-center gap-2
-              ${activeTab === 'chat' 
-                ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50' 
+            className={`flex-1 min-w-[120px] px-4 py-3 md:px-6 md:py-4 font-medium transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap
+              ${activeTab === 'chat'
+                ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50'
                 : 'text-gray-600 hover:bg-gray-50'}`}
           >
             <MessageSquare className="h-5 w-5" />
@@ -178,9 +178,9 @@ const AiSummarizer = () => {
           </button>
           <button
             onClick={() => setActiveTab('summarize')}
-            className={`flex-1 px-6 py-4 font-medium transition-all duration-200 flex items-center justify-center gap-2
-              ${activeTab === 'summarize' 
-                ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50' 
+            className={`flex-1 min-w-[120px] px-4 py-3 md:px-6 md:py-4 font-medium transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap
+              ${activeTab === 'summarize'
+                ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50'
                 : 'text-gray-600 hover:bg-gray-50'}`}
           >
             <FileText className="h-5 w-5" />
@@ -188,9 +188,9 @@ const AiSummarizer = () => {
           </button>
           <button
             onClick={() => setActiveTab('insights')}
-            className={`flex-1 px-6 py-4 font-medium transition-all duration-200 flex items-center justify-center gap-2
-              ${activeTab === 'insights' 
-                ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50' 
+            className={`flex-1 min-w-[120px] px-4 py-3 md:px-6 md:py-4 font-medium transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap
+              ${activeTab === 'insights'
+                ? 'text-gray-900 border-b-2 border-gray-900 bg-gray-50'
                 : 'text-gray-600 hover:bg-gray-50'}`}
           >
             <TrendingUp className="h-5 w-5" />
@@ -234,11 +234,10 @@ const AiSummarizer = () => {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-6 py-4 ${
-                    message.role === 'user'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
+                  className={`max-w-[80%] rounded-2xl px-6 py-4 ${message.role === 'user'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-900'
+                    }`}
                 >
                   <p className="whitespace-pre-wrap">{message.content}</p>
                   {message.sources && message.sources.length > 0 && (
@@ -264,7 +263,7 @@ const AiSummarizer = () => {
                               formattedDate = source.timestamp;
                             }
                           }
-                          
+
                           return (
                             <div key={idx} className="text-xs opacity-75">
                               • {source.contact_name} ({formattedDate})

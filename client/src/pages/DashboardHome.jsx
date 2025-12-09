@@ -70,21 +70,21 @@ const DashboardHome = () => {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">
           Welcome back, {profile?.full_name?.split(' ')[0] || profile?.email?.split('@')[0] || 'there'}
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-base md:text-lg text-gray-600">
           Here's what's happening with your loved one today
         </p>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-8">
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 mb-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           <button
             onClick={() => setIsAddContactModalOpen(true)}
             className="flex flex-col items-center gap-3 p-4 rounded-xl border border-gray-200 

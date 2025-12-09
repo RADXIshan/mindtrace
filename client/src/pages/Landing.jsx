@@ -22,7 +22,7 @@ const Landing = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section id="overview" className="pt-32 pb-20 px-6 lg:px-8">
+      <section id="overview" className="pt-32 pb-20 px-4 md:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-4xl md:text-7xl lg:text-8xl font-bold text-gray-900 mb-8 tracking-tight leading-[1.1]">
             A new species of<br />smart glasses.
@@ -37,7 +37,7 @@ const Landing = () => {
       </section>
 
       {/* Product Image Section */}
-      <section className="py-20 px-6 lg:px-8 bg-gray-50">
+      <section className="py-20 px-4 md:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <div className="relative aspect-square md:aspect-video rounded-3xl overflow-hidden shadow-2xl group cursor-default">
             <img
@@ -69,7 +69,7 @@ const Landing = () => {
       </section>
 
       {/* Feature Highlight 1 */}
-      <section className="py-32 px-6 lg:px-8">
+      <section className="py-32 px-4 md:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div className="order-2 md:order-1">
             <div className="aspect-square bg-linear-to-br from-blue-100 to-indigo-100 rounded-3xl flex items-center justify-center">
@@ -108,7 +108,7 @@ const Landing = () => {
       </section>
 
       {/* Feature Highlight 2 */}
-      <section className="py-32 px-6 lg:px-8 bg-gray-50">
+      <section className="py-32 px-4 md:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div>
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
@@ -147,7 +147,7 @@ const Landing = () => {
       </section>
 
       {/* Feature Highlight 3 */}
-      <section className="py-32 px-6 lg:px-8">
+      <section className="py-32 px-4 md:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div className="order-2 md:order-1">
             <div className="aspect-square bg-linear-to-br from-emerald-100 to-teal-100 rounded-3xl flex items-center justify-center">
@@ -186,7 +186,7 @@ const Landing = () => {
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="py-32 px-6 lg:px-8 bg-gray-50">
+      <section id="features" className="py-32 px-4 md:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
@@ -250,7 +250,7 @@ const Landing = () => {
       </section>
 
       {/* Technical Specifications */}
-      <section id="support" className="py-32 px-6 lg:px-8">
+      <section id="support" className="py-32 px-4 md:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
@@ -283,7 +283,7 @@ const Landing = () => {
       <FAQSection />
 
       {/* CTA Section */}
-      <section className="py-32 px-6 lg:px-8">
+      <section className="py-32 px-4 md:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center text-black">
           <h2 className="text-5xl md:text-6xl font-bold mb-8 leading-tight">
             Ready to upgrade<br />your memory?

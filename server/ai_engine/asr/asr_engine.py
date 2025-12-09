@@ -1,76 +1,68 @@
-import whisper
 import numpy as np
-import torch
 import os
 from typing import Union
 from collections import deque
 import time
+from faster_whisper import WhisperModel
 
 class ASREngine:
-    def __init__(self, model_size: str = "base"):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Loading Whisper model '{model_size}' on {self.device}...")
-        self.model = whisper.load_model(model_size, device=self.device)
-        print("Whisper model loaded.")
+    def __init__(self, model_size: str = "base.en"):
+        # Faster Whisper handles device selection automatically relative to availability
+        # On Mac, it uses CTranslate2 which is optimized for CPU/Arm
+        device = "cpu" 
+        compute_type = "int8" # Quantization for speed
         
+        print(f"Loading Faster Whisper model '{model_size}' on {device} with {compute_type}...")
+        try:
+             self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
+             print("✓ Faster Whisper model loaded successfully.")
+        except Exception as e:
+             print(f"Error loading Faster Whisper: {e}")
+             print("Falling back to tiny.en...")
+             self.model = WhisperModel("tiny.en", device=device, compute_type=compute_type)
+
         # Cache for smoother transcription
         self.last_transcript = ""
         self.last_transcript_time = 0
-        self.transcript_cache = deque(maxlen=3)  # Keep last 3 transcripts for smoothing
+        self.transcript_cache = deque(maxlen=3)
         
     def transcribe_audio_chunk(self, audio_data: Union[np.ndarray, str]) -> str:
         """
-        Transcribe a chunk of audio data with improved smoothing and caching.
-        
+        Transcribe audio chunk using Faster Whisper.
         Args:
-            audio_data: Numpy array of audio samples (16kHz, mono, float32 normalized to -1.0 to 1.0) OR path to audio file
-        
-        Returns:
-            Transcribed text.
+            audio_data: Numpy array (float32) or file path
         """
-        if not isinstance(audio_data, str):
-            if len(audio_data) == 0:
-                return ""
-
-            # Whisper expects float32 audio
-            if audio_data.dtype != np.float32:
-                audio_data = audio_data.astype(np.float32)
-            
-            # Normalize audio to prevent clipping
-            max_val = np.abs(audio_data).max()
-            if max_val > 0:
-                audio_data = audio_data / max_val * 0.95
-
         try:
-            # Use the high-level transcribe method which is more robust
-            # fp16=True for CUDA (faster), False for CPU (required)
-            use_fp16 = self.device == "cuda"
-            
-            # Optimized parameters for faster, smoother transcription
-            result = self.model.transcribe(
+            if not isinstance(audio_data, str):
+                if len(audio_data) == 0: return ""
+                if audio_data.dtype != np.float32:
+                    audio_data = audio_data.astype(np.float32)
+                
+                # Normalize
+                max_val = np.abs(audio_data).max()
+                if max_val > 0:
+                    audio_data = audio_data / max_val * 0.95
+
+            # Transcribe with greedy decoding (beam_size=1) for maximum speed
+            segments, info = self.model.transcribe(
                 audio_data, 
-                fp16=use_fp16, 
+                beam_size=1,
                 language="en",
-                beam_size=3,  # Reduced from default 5 for speed
-                best_of=3,    # Reduced from default 5 for speed
-                temperature=0.0,  # Deterministic output for consistency
-                compression_ratio_threshold=2.4,
-                logprob_threshold=-1.0,
-                no_speech_threshold=0.5,  # More aggressive silence detection
-                condition_on_previous_text=True  # Better context awareness
+                condition_on_previous_text=False, # Disable for short chunks to prevent hallucinations
+                vad_filter=True, # Enable VAD to skip silence
+                vad_parameters=dict(min_silence_duration_ms=500)
             )
             
-            transcript = result["text"].strip()
+            # Combine segments
+            text = " ".join([segment.text for segment in segments]).strip()
             
-            # Cache management for smoother output
-            current_time = time.time()
-            if transcript:
-                self.transcript_cache.append(transcript)
-                self.last_transcript = transcript
-                self.last_transcript_time = current_time
-            
-            return transcript
-            
+            if text:
+                self.transcript_cache.append(text)
+                self.last_transcript = text
+                self.last_transcript_time = time.time()
+                
+            return text
+
         except Exception as e:
             print(f"Transcription error: {e}")
             return ""

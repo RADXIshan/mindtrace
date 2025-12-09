@@ -7,7 +7,6 @@ import os
 import sys
 
 # Add parent directory to path to import from app
-# Add parent directory to path to import from app
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import ChromaDB client
@@ -21,113 +20,102 @@ except ImportError:
 def load_models():
     """
     Load the RetinaFace and ArcFace models.
-    Optimized for real-time multi-face detection with maximum performance.
+    Optimized for real-time multi-face detection with maximum performance using 'buffalo_s'.
     """
-    app = FaceAnalysis(name="buffalo_l")
-    # Use (224, 224) for extreme speed - aggressive optimization
-    # This matches the frontend capture size for optimal performance
-    app.prepare(ctx_id=0, det_size=(224, 224))
+    # This provides a ~3x speedup with minimal accuracy loss for close-range faces
+    # CoreML disabled due to shape mismatch errors on some MacOS versions
+    app = FaceAnalysis(name="buffalo_s", providers=['CPUExecutionProvider'])
+    
+    # Use (320, 320) - slightly larger than 224 for better detection of small faces but still very fast
+    app.prepare(ctx_id=0, det_size=(320, 320))
     return app
 
 def detect_and_embed(app, image):
     """
     Detect all faces and return their embedding vectors.
-    Optimized for real-time performance with minimal preprocessing.
+    Optimized for real-time performance.
     """
-    # InsightFace expects BGR image (OpenCV format)
     if image is None:
         return []
     
     # Ensure image is in correct format
-    if len(image.shape) != 3 or image.shape[2] != 3:
+    # Simple check for efficiency
+    if getattr(image, 'ndim', 0) != 3:
         return []
     
-    # Direct detection for maximum speed - no enhancement for real-time
+    # Direct detection
+    # Using the smaller model allows for faster inference
     faces = app.get(image)
     
     if len(faces) == 0:
         return []
     
     results = []
-    for idx, face in enumerate(faces):
-        bbox = face.bbox.tolist()
-        # Add detection score for confidence filtering
-        det_score = float(face.det_score) if hasattr(face, 'det_score') else 1.0
+    for face in faces:
         results.append({
             "embedding": face.embedding.tolist(),
-            "bbox": bbox,
-            "det_score": det_score
+            "bbox": face.bbox.tolist(),
+            "det_score": float(face.det_score) if hasattr(face, "det_score") else 1.0
         })
     
     return results
 
-def cosine_similarity(a, b):
-    a, b = np.array(a), np.array(b)
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return np.dot(a, b) / (norm_a * norm_b)
-
-def recognize_face(app, image, threshold=0.38, user_id=None):
+def recognize_face(app, image, threshold=0.45, user_id=None):
     """
     Compare input face embeddings to stored embeddings using ChromaDB.
-    Optimized for real-time multi-face detection with confidence filtering.
     Returns a list of recognition results sorted by confidence.
     """
-    # Get embedding and bbox for all faces
+    # Detect faces
     detected_faces = detect_and_embed(app, image)
     
     if not detected_faces:
         return []
 
-    # Filter out low-confidence detections for stability
-    MIN_DET_SCORE = 0.35  # Lower threshold for better detection rate at smaller size
-    detected_faces = [f for f in detected_faces if f.get("det_score", 1.0) >= MIN_DET_SCORE]
+    # Strict confidence filtering for cleanliness
+    # Buffalo_S might be slightly noisier, so we keep a reasonable threshold
+    MIN_DET_SCORE = 0.5 
+    detected_faces = [f for f in detected_faces if f.get("det_score", 0) >= MIN_DET_SCORE]
     
     if not detected_faces:
         return []
 
-    # Get ChromaDB collection once
+    # Get ChromaDB collection
     try:
         collection = get_face_collection()
-        collection_count = collection.count()
+        if collection.count() == 0:
+            return [{
+                "name": "Unknown", 
+                "relation": "Unidentified Person", 
+                "confidence": 0.0,
+                "bbox": f["bbox"],
+                "det_score": f["det_score"]
+            } for f in detected_faces]
     except:
         return []
-
-    if collection_count == 0:
-        # No faces in database - return all as Unknown (fast path)
-        return [{
-            "name": "Unknown", 
-            "relation": "Unidentified Person", 
-            "confidence": 0.0,
-            "bbox": f["bbox"],
-            "face_index": idx,
-            "det_score": f.get("det_score", 1.0)
-        } for idx, f in enumerate(detected_faces)]
 
     results = []
     where_filter = {"user_id": user_id} if user_id else None
 
-    # Process all faces in parallel for maximum speed
-    for idx, face_data in enumerate(detected_faces):
+    # Batch query could be implemented here but sequential is fast enough for 1-3 faces
+    for face_data in detected_faces:
         current_emb = face_data["embedding"]
         current_bbox = face_data["bbox"]
-        det_score = face_data.get("det_score", 1.0)
         
         try:
-            # Query for top 1 match for maximum speed
+            # Query top 1
             query_result = collection.query(
                 query_embeddings=[current_emb],
                 n_results=1,
                 where=where_filter
             )
             
-            # Fast path for matches
+            match_found = False
             if query_result and query_result['ids'] and len(query_result['ids'][0]) > 0:
                 distance = query_result['distances'][0][0]
                 similarity = 1.0 - distance
                 
+                # Buffalo_S produces slightly different embedding space
+                # 0.45 is a good safe threshold
                 if similarity > threshold:
                     metadata = query_result['metadatas'][0][0]
                     results.append({
@@ -135,102 +123,80 @@ def recognize_face(app, image, threshold=0.38, user_id=None):
                         "relation": metadata["relation"],
                         "confidence": float(similarity),
                         "bbox": current_bbox,
-                        "face_index": idx,
-                        "det_score": det_score,
+                        "det_score": face_data["det_score"],
                         "contact_id": metadata.get("contact_id")
                     })
-                    continue
-        except:
-            pass
+                    match_found = True
+            
+            if not match_found:
+                results.append({
+                    "name": "Unknown", 
+                    "relation": "Unidentified Person", 
+                    "confidence": 0.0,
+                    "bbox": current_bbox,
+                    "det_score": face_data["det_score"]
+                })
+                
+        except Exception as e:
+            print(f"Recog error: {e}")
+            results.append({
+                "name": "Unknown", "relation": "Error", "confidence": 0, "bbox": current_bbox
+            })
 
-        # Fast path for unknown faces
-        results.append({
-            "name": "Unknown", 
-            "relation": "Unidentified Person", 
-            "confidence": 0.0,
-            "bbox": current_bbox,
-            "face_index": idx,
-            "det_score": det_score
-        })
-    
-    # Sort results by confidence (highest first) for better display
+    # Sort results
     results.sort(key=lambda x: x.get("confidence", 0), reverse=True)
-    
     return results
 
 def sync_embeddings_from_db(app, db_session):
     """
     Sync face embeddings from database contacts with profile photos.
-    This is the ONLY way to register faces - all photos must be added through the contacts page.
-    This function pushes embeddings to ChromaDB.
     """
     from app.models import Contact
     
-    # Get all contacts with profile photos
     contacts = db_session.query(Contact).filter(
         Contact.profile_photo.isnot(None),
         Contact.is_active == True
     ).all()
     
-    # Get ChromaDB collection
     try:
         collection = get_face_collection()
     except Exception as e:
-        return {"success": False, "error": f"Failed to connect to ChromaDB: {str(e)}"}
+        return {"success": False, "error": str(e)}
     
-    count = 0
-    errors = []
-    
-    # Prepare batch data
     ids = []
     embeddings = []
     metadatas = []
     
     for contact in contacts:
-        if not contact.profile_photo:
-            print(f"Warning: No photo data for {contact.name}")
-            continue
+        if not contact.profile_photo: continue
             
-        # Convert binary data to OpenCV image
         nparr = np.frombuffer(contact.profile_photo, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
-        if img is None:
-            print(f"Error: Could not decode image for {contact.name}")
+        if img is None: continue
+        
+        # Detect
+        # Note: We must use the same model (app) as used for recognition
+        faces = app.get(img)
+        if not faces:
+            print(f"Warning: No face found in profile photo for {contact.name}")
             continue
+            
+        # Take largest face (assuming profile photo has main subject largest)
+        faces.sort(key=lambda x: (x.bbox[2]-x.bbox[0]) * (x.bbox[3]-x.bbox[1]), reverse=True)
+        face = faces[0]
         
-        # Extract embedding
-        data_list = detect_and_embed(app, img)
-        if not data_list:
-            print(f"Error: No face detected for {contact.name}")
-            continue
-        
-        # Use the first detected face for the profile
-        data = data_list[0]
-        
-        # Add to batch
         ids.append(f"contact_{contact.id}")
-        embeddings.append(data["embedding"])
+        embeddings.append(face.embedding.tolist())
         metadatas.append({
             "name": contact.name,
             "relation": contact.relationship_detail or contact.relationship,
             "contact_id": contact.id,
             "user_id": contact.user_id
         })
-        count += 1
     
-    # Upsert to ChromaDB
     if ids:
-        try:
-            collection.upsert(
-                ids=ids,
-                embeddings=embeddings,
-                metadatas=metadatas
-            )
-            print(f"Successfully synced {len(ids)} face embeddings to ChromaDB")
-            return {"success": True, "count": len(ids)}
-        except Exception as e:
-            print(f"Error upserting to ChromaDB: {e}")
-            return {"success": False, "error": str(e)}
+        collection.upsert(ids=ids, embeddings=embeddings, metadatas=metadatas)
+        return {"success": True, "count": len(ids)}
     else:
         return {"success": True, "count": 0}

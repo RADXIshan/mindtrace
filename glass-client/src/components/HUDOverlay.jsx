@@ -9,27 +9,25 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
         return () => clearInterval(timer);
     }, []);
 
-    // Helper to get style for tracking tag with smart positioning for multiple faces
-    const getTagStyle = (position, index) => {
+    // Helper to get style for tracking tag
+    const getTagStyle = (position, placement, index) => {
         if (!position) return {};
 
         const { left, top, width } = position;
+        const verticalOffset = (index % 3) * 40; // Stagger to prevent vertical overlap
 
-        // Smart positioning for multiple faces
-        // Alternate sides and stagger vertically to prevent overlap
-        const isRightSide = index % 2 === 0;
-        const verticalOffset = Math.floor(index / 2) * 30; // Stagger every other face
-        
-        const horizontalOffset = isRightSide ? width + 40 : -260; // Tag width ~240px + margin
+        // If placement is 'right', tag goes to the RIGHT of the face
+        // If placement is 'left', tag goes to the LEFT of the face
+        const horizontalOffset = placement === 'right' ? width + 40 : -280; // Tag width ~260px + margin
 
         return {
             position: 'absolute',
             left: `${left + horizontalOffset}px`,
             top: `${top + verticalOffset}px`,
-            transition: 'left 0.02s linear, top 0.02s linear',
+            transition: 'left 0.1s ease-out, top 0.1s ease-out',
             willChange: 'transform, left, top',
             transform: 'translate3d(0, 0, 0)',
-            zIndex: 1000 + index, // Ensure proper stacking
+            zIndex: 1000 + index, 
             backfaceVisibility: 'hidden',
             perspective: 1000
         };
@@ -51,7 +49,7 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
         }
     };
 
-    const TagContent = ({ result, variant = 'light' }) => {
+    const TagContent = ({ result, placement, variant = 'light' }) => {
         const lastSeen = formatISTTime(result.last_seen_timestamp);
         const summary = result.last_conversation_summary;
         
@@ -90,6 +88,11 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
             ? "text-[11px] text-gray-300 leading-snug line-clamp-2 italic"
             : "text-xs text-gray-600 leading-snug line-clamp-2 italic";
 
+        // Line positioning based on placement
+        // If placement is 'right' (tag on right of face), line is on LEFT of tag
+        // If placement is 'left' (tag on left of face), line is on RIGHT of tag
+        const isTagOnRight = placement === 'right';
+
         return (
             <div className={containerClass}>
                 <div className="flex flex-col gap-2">
@@ -120,9 +123,19 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
                         </div>
                     )}
                 </div>
+                
                 {/* Connecting Line */}
-                <div className={`absolute top-8 left-0 -translate-x-full h-px ${isDark ? 'w-8 bg-white/30' : 'w-10 bg-white/60'}`} />
-                <div className={`absolute top-8 -left-1 w-2 h-2 rounded-full ${isDark ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]'}`} />
+                {isTagOnRight ? (
+                    <>
+                        <div className={`absolute top-8 left-0 -translate-x-full h-px ${isDark ? 'w-8 bg-white/30' : 'w-10 bg-white/60'}`} />
+                        <div className={`absolute top-8 -left-1 w-2 h-2 rounded-full ${isDark ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]'}`} />
+                    </>
+                ) : (
+                    <>
+                        <div className={`absolute top-8 right-0 translate-x-full h-px ${isDark ? 'w-8 bg-white/30' : 'w-10 bg-white/60'}`} />
+                        <div className={`absolute top-8 -right-1 w-2 h-2 rounded-full ${isDark ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]'}`} />
+                    </>
+                )}
             </div>
         );
     };
@@ -153,13 +166,22 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
 
 
                 {/* Tracking Tags */}
-                {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => (
-                    result.position && (
-                        <div key={`tag-${result.name}-${result.confidence}-${index}`} style={getTagStyle(result.position, index, recognitionResult.length)}>
-                            <TagContent result={result} variant="light" />
+                {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => {
+                    if (!result.position) return null;
+                    
+                    // Determine placement based on screen position
+                    // If face is on left half (< 50vw), place tag on RIGHT
+                    // If face is on right half (> 50vw), place tag on LEFT
+                    const screenCenter = window.innerWidth / 2;
+                    const faceCenter = result.position.left + result.position.width / 2;
+                    const placement = faceCenter < screenCenter ? 'right' : 'left';
+                    
+                    return (
+                        <div key={`track-${result.trackId}`} style={getTagStyle(result.position, placement, index)}>
+                            <TagContent result={result} placement={placement} variant="light" />
                         </div>
-                    )
-                ))}
+                    );
+                })}
 
                 {/* Info message when Unknown faces are detected */}
                 {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.length > 0 &&
@@ -215,38 +237,45 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
 
 
             {/* Tracking Tags - Minimal for Ray-Ban */}
-            {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => (
-                result.position && (
-                    <div key={`tag-${result.name}-${result.confidence}-${index}`} style={getTagStyle(result.position, index, recognitionResult.length)}>
-                        <TagContent result={result} variant="dark" />
+            {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => {
+                if (!result.position) return null;
+                
+                const screenCenter = window.innerWidth / 2;
+                const faceCenter = result.position.left + result.position.width / 2;
+                const placement = faceCenter < screenCenter ? 'right' : 'left';
+                
+                return (
+                    <div key={`track-${result.trackId}`} style={getTagStyle(result.position, placement, index)}>
+                        <TagContent result={result} placement={placement} variant="dark" />
                     </div>
-                )
-            ))}
+                );
+            })}
 
-            {/* Info message when Unknown faces are detected */}
-            {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.length > 0 &&
-                recognitionResult.every(r => r.name === 'Unknown') && (
-                    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 max-w-md">
-                        <div className="bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 shadow-xl">
-                            <p className="text-white text-sm font-medium text-center">
-                                💡 Upload contacts with photos to identify faces
+                {/* Info message when Unknown faces are detected */}
+                {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.length > 0 &&
+                    recognitionResult.every(r => r.name === 'Unknown') && (
+                        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 max-w-md">
+                            <div className="bg-indigo-600/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-indigo-400/50 shadow-xl">
+                                <p className="text-white text-sm font-medium text-center">
+                                    💡 Upload contacts with photos to identify faces
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                {/* Live Subtitles */}
+                {subtitle && subtitle.trim() && (
+                    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 max-w-3xl w-full text-center px-6">
+                         <div className="bg-white/95 backdrop-blur-md p-5 rounded-3xl border-2 border-indigo-200 shadow-2xl">
+                            <p className="text-gray-900 text-xl font-medium leading-relaxed tracking-wide">
+                                {subtitle}
                             </p>
                         </div>
                     </div>
                 )}
+            </div>
+        );
+    }
 
-            {/* Live Subtitles */}
-            {subtitle && subtitle.trim() && (
-                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 max-w-3xl w-full text-center px-6">
-                     <div className="bg-black/70 backdrop-blur-md p-5 rounded-3xl border-2 border-white/20 shadow-2xl">
-                        <p className="text-white text-xl font-medium leading-relaxed tracking-wide">
-                            {subtitle}
-                        </p>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
 
 export default HUDOverlay;

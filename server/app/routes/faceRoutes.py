@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, WebSocket, WebSocketDisconnect, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import cv2
@@ -7,7 +7,9 @@ import numpy as np
 from ai_engine.face_engine import load_models, recognize_face, sync_embeddings_from_db
 from ..database import get_db
 from ..models import Contact, User
-from ..utils.auth import get_current_user
+from ..models import Contact, User
+from ..utils.auth import get_current_user, SECRET_KEY, ALGORITHM
+from jose import jwt, JWTError
 
 router = APIRouter()
 
@@ -119,3 +121,95 @@ async def sync_faces_from_database(
     except Exception as e:
         print(f"Error in sync_faces_from_database: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.websocket("/ws/recognize/{user_id}")
+async def websocket_recognize(
+    websocket: WebSocket,
+    user_id: int,
+    token: str = Query(None)
+):
+    # Authenticate
+    if not token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    # Verify token
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+             return
+    except JWTError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await websocket.accept()
+    
+    # Get DB session
+    db = next(get_db())
+
+    try:
+        while True:
+            # Receive image bytes
+            data = await websocket.receive_bytes()
+            
+            # Decode image
+            nparr = np.frombuffer(data, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+            if img is None:
+                continue
+
+            # Run recognition in thread pool
+            result = await asyncio.to_thread(recognize_face, face_app, img, user_id=user_id)
+            
+            if result is None:
+                result = []
+
+            # Enrich results (copy-paste logic from HTTP endpoint for now, can be refactored later)
+            if result:
+                from datetime import datetime, timezone
+                from ..models import Interaction, Contact
+                
+                contact_ids = [res["contact_id"] for res in result if res.get("name") != "Unknown" and "contact_id" in res]
+                
+                if contact_ids:
+                    contacts = db.query(Contact).filter(Contact.id.in_(contact_ids)).all()
+                    contact_map = {c.id: c for c in contacts}
+                    
+                    last_interactions = db.query(Interaction).filter(
+                        Interaction.contact_id.in_(contact_ids)
+                    ).order_by(Interaction.contact_id, Interaction.timestamp.desc()).all()
+                    
+                    interaction_map = {}
+                    for interaction in last_interactions:
+                        if interaction.contact_id not in interaction_map:
+                            interaction_map[interaction.contact_id] = interaction
+                    
+                    for res in result:
+                        if res.get("name") != "Unknown" and "contact_id" in res:
+                            contact_id = res["contact_id"]
+                            contact = contact_map.get(contact_id)
+                            
+                            if contact:
+                                last_seen_time = contact.last_seen
+                                res["last_seen_timestamp"] = last_seen_time.isoformat() if last_seen_time else None
+                                
+                                last_interaction = interaction_map.get(contact_id)
+                                res["last_conversation_summary"] = last_interaction.summary if last_interaction else None
+                                
+                                contact.last_seen = datetime.now(timezone.utc)
+                    
+                    db.commit()
+
+            # Send back result
+            await websocket.send_json(result)
+
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"WebSocket Error: {e}")
+    finally:
+        db.close()

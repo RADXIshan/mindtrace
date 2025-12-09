@@ -405,176 +405,326 @@ const FaceRecognition = () => {
 
     // ... existing refs and logic ...
 
+    const faceWsRef = useRef(null);
+    const isWaitingForResponseRef = useRef(false);
+
+    // Initial connection to Face Recognition WebSocket
+    const connectFaceWebSocket = () => {
+        const currentUserId = userIdRef.current;
+        if (!currentUserId || faceWsRef.current) return;
+
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const token = localStorage.getItem('token');
+        
+        if (!token) return;
+
+        const wsUrl = apiBaseUrl.replace(/^http/, 'ws') + `/face/ws/recognize/${currentUserId}?token=${encodeURIComponent(token)}`;
+        console.log("Connecting to Face WebSocket:", wsUrl);
+
+        const ws = new WebSocket(wsUrl);
+        faceWsRef.current = ws;
+
+        ws.onopen = () => {
+            console.log("✓ Face WebSocket connected");
+            setDebugStatus("Face WS Connected");
+            processFrame(); // Start the loop
+        };
+
+        ws.onmessage = (event) => {
+            isWaitingForResponseRef.current = false;
+            try {
+                const data = JSON.parse(event.data);
+                handleRecognitionResult(data);
+                
+                // Immediately trigger next frame after receiving response for lowest latency
+                // Use requestAnimationFrame to sync with display refresh
+                 requestAnimationFrame(processFrame);
+            } catch (e) {
+                console.error("Face WS parse error:", e);
+                // Continue loop even on error
+                requestAnimationFrame(processFrame);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log("Face WebSocket closed");
+            faceWsRef.current = null;
+            // Try to reconnect after a short delay if loop is still active
+            if (loopActiveRef.current) {
+                setTimeout(connectFaceWebSocket, 1000);
+            }
+        };
+
+        ws.onerror = (err) => {
+            console.error("Face WS Error:", err);
+            isWaitingForResponseRef.current = false;
+        };
+    };
+
+    const tracksRef = useRef([]); // [{ id, x, y, w, h, lastSeen, data }]
+    const nextTrackIdRef = useRef(1);
+
+    const updateTracks = (newDetections) => {
+        const timestamp = Date.now();
+        const assignments = new Array(newDetections.length).fill(-1);
+        const usedTracks = new Set();
+        
+        // Calculate centers for new detections
+        const newCenters = newDetections.map(d => {
+             if (!d.position) return null;
+             return {
+                 x: d.position.left + d.position.width / 2,
+                 y: d.position.top + d.position.height / 2
+             };
+        });
+
+        // 1. Greedy matching: Find closest track for each detection
+        // Limit matching distance to avoid jumping across screen (e.g., 20% of screen width)
+        const MAX_MATCH_DIST = window.innerWidth * 0.25;
+
+        // Sort detections by size (largest first) to prioritize main subjects
+        const sortedIndices = newDetections.map((_, i) => i)
+            .sort((a, b) => (newDetections[b].position.width * newDetections[b].position.height) - 
+                            (newDetections[a].position.width * newDetections[a].position.height));
+
+        for (const idx of sortedIndices) {
+            const center = newCenters[idx];
+            if (!center) continue;
+            
+            let bestTrackIndex = -1;
+            let minDist = MAX_MATCH_DIST;
+
+            tracksRef.current.forEach((track, tIdx) => {
+                if (usedTracks.has(tIdx)) return;
+                
+                // Prediction: Estimate where track would be based on velocity? 
+                // For simplicity, just use last known position as we have high FPS
+                const trackCenter = { 
+                     x: track.x + track.w / 2, 
+                     y: track.y + track.h / 2 
+                };
+
+                const dist = Math.hypot(center.x - trackCenter.x, center.y - trackCenter.y);
+                
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestTrackIndex = tIdx;
+                }
+            });
+
+            if (bestTrackIndex !== -1) {
+                assignments[idx] = bestTrackIndex;
+                usedTracks.add(bestTrackIndex);
+            }
+        }
+
+        // 2. Update/Create Tracks
+        const currentTracks = tracksRef.current;
+        const updatedTracks = [];
+
+        newDetections.forEach((detection, idx) => {
+             const trackIdx = assignments[idx];
+             
+             if (trackIdx !== -1) {
+                 // Update existing track
+                 const track = currentTracks[trackIdx];
+                 updatedTracks.push({
+                     ...track,
+                     x: detection.position.left,
+                     y: detection.position.top,
+                     w: detection.position.width,
+                     h: detection.position.height,
+                     lastSeen: timestamp,
+                     data: detection // Update recognition data (name could change if recognition improves)
+                 });
+             } else {
+                 // Create new track
+                 updatedTracks.push({
+                     id: nextTrackIdRef.current++,
+                     x: detection.position.left,
+                     y: detection.position.top,
+                     w: detection.position.width,
+                     h: detection.position.height,
+                     lastSeen: timestamp,
+                     data: detection
+                 });
+             }
+        });
+
+        // 3. Keep lost tracks for a short time (ghosting) to prevent flickering on one missing frame
+        // But only if they haven't been stale for > 500ms
+        currentTracks.forEach((track, tIdx) => {
+             if (!usedTracks.has(tIdx)) {
+                 if (timestamp - track.lastSeen < 500) {
+                     updatedTracks.push(track);
+                 }
+             }
+        });
+
+        tracksRef.current = updatedTracks;
+        
+        // Return format expected by UI, injected with stable trackId
+        return updatedTracks.map(track => ({
+            ...track.data,
+            trackId: track.id, // STABLE ID
+            position: {
+                left: track.x,
+                top: track.y,
+                width: track.w,
+                height: track.h
+            }
+        }));
+    };
+
+    const handleRecognitionResult = (data) => {
+        const results = Array.isArray(data) ? data : [data];
+        const validResults = results.filter(r => r);
+
+        // 1. First, calculate raw screen positions for the new frame
+        const processedResults = validResults.map((result) => {
+            if (result.bbox) {
+                return { ...result, position: calculatePosition(result.bbox) };
+            }
+            return result;
+        }).filter(r => r.position); // Must have valid position
+
+        // 2. Run Tracker to assign stable IDs and handle temporary loss
+        const trackedResults = updateTracks(processedResults);
+
+        if (trackedResults.length > 0) {
+            // 3. Apply Smoothing using Stable Track IDs
+            const smoothedResults = trackedResults.map(result => {
+                // KEY CHANGE: Use trackId for caching instead of name
+                const cacheKey = `track_${result.trackId}`;
+                
+                const cached = faceTrackingCache.current.get(cacheKey);
+                const velocity = velocityCache.current.get(cacheKey);
+                
+                if (cached && result.position) {
+                    // Calculate velocity
+                    const newVelocity = {
+                        left: result.position.left - cached.left,
+                        top: result.position.top - cached.top,
+                        width: result.position.width - cached.width,
+                        height: result.position.height - cached.height
+                    };
+                    
+                    const velocitySmooth = 0.6; // Smoother for multiple faces
+                    const smoothedVelocity = velocity ? {
+                        left: velocity.left * (1 - velocitySmooth) + newVelocity.left * velocitySmooth,
+                        top: velocity.top * (1 - velocitySmooth) + newVelocity.top * velocitySmooth,
+                        width: velocity.width * (1 - velocitySmooth) + newVelocity.width * velocitySmooth,
+                        height: velocity.height * (1 - velocitySmooth) + newVelocity.height * velocitySmooth
+                    } : newVelocity;
+                    
+                    velocityCache.current.set(cacheKey, smoothedVelocity);
+                    
+                    // Prediction factor
+                    const smoothFactor = 0.6; // Increase smoothing for stability
+                    const predictFactor = 0.2; 
+                    
+                    result.position = {
+                        left: cached.left * (1 - smoothFactor) + result.position.left * smoothFactor + smoothedVelocity.left * predictFactor,
+                        top: cached.top * (1 - smoothFactor) + result.position.top * smoothFactor + smoothedVelocity.top * predictFactor,
+                        width: cached.width * (1 - smoothFactor) + result.position.width * smoothFactor + smoothedVelocity.width * predictFactor,
+                        height: cached.height * (1 - smoothFactor) + result.position.height * smoothFactor + smoothedVelocity.height * predictFactor
+                    };
+                }
+                
+                if (result.position) {
+                    faceTrackingCache.current.set(cacheKey, result.position);
+                }
+                
+                return result;
+            });
+            
+            setRecognitionResult(smoothedResults);
+            lastResultRef.current = smoothedResults;
+            
+            // Debug info
+            const faceCount = smoothedResults.length;
+            if (faceCount > 0) {
+                 const faceNames = smoothedResults.slice(0, 3).map(r => r.name).join(", ");
+                 const moreText = faceCount > 3 ? ` +${faceCount - 3}` : '';
+                 setDebugStatus(`${faceCount} Faces: ${faceNames}${moreText}`);
+            }
+
+            // ASR Trigger
+            const identifiedPerson = smoothedResults.find(r => r.name !== "Unknown");
+            const name = identifiedPerson?.name || smoothedResults[0]?.name || "Unknown";
+            const currentUserId = userIdRef.current;
+            
+            if (!isRecordingRef.current && currentUserId && name !== "Unknown") {
+                startRecording(name);
+            }
+
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
+        } else {
+            setRecognitionResult([]);
+             if (lastResultRef.current && !timeoutRef.current) {
+                timeoutRef.current = setTimeout(() => {
+                    lastResultRef.current = null;
+                    timeoutRef.current = null;
+                    faceTrackingCache.current.clear();
+                    velocityCache.current.clear();
+                    setDebugStatus("No Faces");
+                    stopRecording();
+                }, 2000);
+            } else if (!lastResultRef.current) {
+                 // Scan indicator handled by blinking led in UI usually
+            }
+        }
+    };
+
     const processFrame = async () => {
         if (!loopActiveRef.current) return;
         
-        // Throttle requests to prevent overwhelming the server
-        const now = Date.now();
-        if (now - lastRequestTimeRef.current < MIN_REQUEST_INTERVAL) {
-            requestAnimationFrame(processFrame);
-            return;
-        }
-        
-        if (isProcessingRef.current) {
-            requestAnimationFrame(processFrame);
+        // If WebSocket is not open, wait/reconnect
+        if (!faceWsRef.current || faceWsRef.current.readyState !== WebSocket.OPEN) {
+            // If completely missing, try connect
+            if (!faceWsRef.current) {
+                connectFaceWebSocket();
+            }
+            setTimeout(() => requestAnimationFrame(processFrame), 500); 
             return;
         }
 
+        // Flow Control: If we are still waiting for a response, skip this frame
+        // This ensures we don't flood the server and build up latency
+        if (isWaitingForResponseRef.current) {
+             // Optional: Add a timeout to force reset if stuck?
+             // For now, just skip.
+             // But valid to check if it's STUCK (e.g. > 2 sec)
+             return;
+        }
+        
+        // Rate limit locally if needed, but with WS ping-pong it's self-regulating.
+        // We can just rely on the server response triggering the next frame.
+
         if (!videoRef.current || videoRef.current.paused || videoRef.current.ended || videoRef.current.readyState < 2) {
-             requestAnimationFrame(processFrame); // Use RAF instead of setTimeout for smoother loop
+             setTimeout(() => requestAnimationFrame(processFrame), 100);
              return;
         }
 
-        isProcessingRef.current = true;
-        lastRequestTimeRef.current = now;
-        
         try {
             const blob = await captureFrame();
             if (!blob) {
-                isProcessingRef.current = false;
-                setTimeout(processFrame, 100);
+                setTimeout(() => requestAnimationFrame(processFrame), 100);
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('file', blob, 'frame.jpg');
+            // Send via WebSocket
+            faceWsRef.current.send(blob);
+            isWaitingForResponseRef.current = true;
+            // Next frame trigger is in onmessage
 
-            const response = await faceApi.recognize(formData);
-            const data = response.data;
-
-            const results = Array.isArray(data) ? data : [data];
-            const validResults = results.filter(r => r);
-
-            const processedResults = validResults.map((result) => {
-                if (result.bbox) {
-                    return { ...result, position: calculatePosition(result.bbox) };
-                }
-                return result;
-            });
-
-            if (processedResults.length > 0) {
-                // Extreme responsiveness with ultra-minimal smoothing
-                const smoothedResults = processedResults.map(result => {
-                    const cacheKey = result.name + (result.contact_id || '');
-                    const cached = faceTrackingCache.current.get(cacheKey);
-                    const velocity = velocityCache.current.get(cacheKey);
-                    
-                    if (cached && result.position) {
-                        // Calculate velocity for predictive smoothing
-                        const newVelocity = {
-                            left: result.position.left - cached.left,
-                            top: result.position.top - cached.top,
-                            width: result.position.width - cached.width,
-                            height: result.position.height - cached.height
-                        };
-                        
-                        // Ultra-minimal velocity smoothing for extreme responsiveness
-                        const velocitySmooth = 0.9;
-                        const smoothedVelocity = velocity ? {
-                            left: velocity.left * (1 - velocitySmooth) + newVelocity.left * velocitySmooth,
-                            top: velocity.top * (1 - velocitySmooth) + newVelocity.top * velocitySmooth,
-                            width: velocity.width * (1 - velocitySmooth) + newVelocity.width * velocitySmooth,
-                            height: velocity.height * (1 - velocitySmooth) + newVelocity.height * velocitySmooth
-                        } : newVelocity;
-                        
-                        velocityCache.current.set(cacheKey, smoothedVelocity);
-                        
-                        // Extreme responsiveness - near-zero lag
-                        const smoothFactor = 0.92; // Extremely high = near-instant response
-                        const predictFactor = 0.15; // Minimal prediction for maximum stability
-                        
-                        result.position = {
-                            left: cached.left * (1 - smoothFactor) + result.position.left * smoothFactor + smoothedVelocity.left * predictFactor,
-                            top: cached.top * (1 - smoothFactor) + result.position.top * smoothFactor + smoothedVelocity.top * predictFactor,
-                            width: cached.width * (1 - smoothFactor) + result.position.width * smoothFactor + smoothedVelocity.width * predictFactor,
-                            height: cached.height * (1 - smoothFactor) + result.position.height * smoothFactor + smoothedVelocity.height * predictFactor
-                        };
-                    }
-                    
-                    if (result.position) {
-                        faceTrackingCache.current.set(cacheKey, result.position);
-                    }
-                    
-                    return result;
-                });
-                
-                setRecognitionResult(smoothedResults);
-                lastResultRef.current = smoothedResults;
-                
-                // Update debug status with face info (non-critical, defer if busy)
-                if (window.requestIdleCallback) {
-                    window.requestIdleCallback(() => {
-                        const faceCount = smoothedResults.length;
-                        const faceNames = smoothedResults.slice(0, 3).map(r => r.name).join(", ");
-                        const moreText = faceCount > 3 ? ` +${faceCount - 3}` : '';
-                        setDebugStatus(`${faceCount} face${faceCount > 1 ? 's' : ''}: ${faceNames}${moreText}`);
-                    });
-                } else {
-                    const faceCount = smoothedResults.length;
-                    const faceNames = smoothedResults.slice(0, 3).map(r => r.name).join(", ");
-                    const moreText = faceCount > 3 ? ` +${faceCount - 3}` : '';
-                    setDebugStatus(`${faceCount} face${faceCount > 1 ? 's' : ''}: ${faceNames}${moreText}`);
-                }
-                
-                // --- ASR Trigger ---
-                // If we detect a face, start recording if not already
-                // Use the name of the first identified person (not Unknown) or first person
-                const identifiedPerson = smoothedResults.find(r => r.name !== "Unknown");
-                const name = identifiedPerson?.name || smoothedResults[0]?.name || "Unknown";
-                const currentUserId = userIdRef.current;
-                
-                if (!isRecordingRef.current && currentUserId && name !== "Unknown") {
-                    console.log(`Face detected: ${name}, starting ASR...`);
-                    startRecording(name);
-                } else if (!currentUserId) {
-                    console.warn("Cannot start ASR: userId not available yet");
-                }
-                // -------------------
-
-                if (timeoutRef.current) {
-                    clearTimeout(timeoutRef.current);
-                    timeoutRef.current = null;
-                }
-            } else {
-                setRecognitionResult([]);
-                 if (lastResultRef.current && !timeoutRef.current) {
-                    // Extended timeout to 2 seconds for smoother experience
-                    timeoutRef.current = setTimeout(() => {
-                        lastResultRef.current = null;
-                        timeoutRef.current = null;
-                        faceTrackingCache.current.clear(); // Clear cache when no faces
-                        velocityCache.current.clear(); // Clear velocity cache
-                        setDebugStatus("No Faces");
-                        
-                        // --- ASR Stop ---
-                        stopRecording();
-                        // ----------------
-                        
-                    }, 2000);
-                    setDebugStatus("Persisting...");
-                } else if (!lastResultRef || !lastResultRef.current) {
-                     setDebugStatus("Scanning...");
-                }
-            }
         } catch (err) {
-            console.error('Face recognition error:', err);
-            
-            // Handle authentication errors
-            if (err.response?.status === 401) {
-                setDebugStatus('Auth Error - Check token');
-                loopActiveRef.current = false; // Stop the loop on auth failure
-                return;
-            }
-            
-            setDebugStatus(`Err: ${err.message}`);
-            
-            // Ultra-minimal backoff on errors for instant recovery
-            await new Promise(resolve => setTimeout(resolve, 50));
-        } finally {
-            isProcessingRef.current = false;
-            if (loopActiveRef.current) {
-                requestAnimationFrame(processFrame);
-            }
+            console.error('Frame processing error:', err);
+            isWaitingForResponseRef.current = false;
+            setTimeout(() => requestAnimationFrame(processFrame), 100);
         }
     };
 
@@ -585,12 +735,11 @@ const FaceRecognition = () => {
         }
 
         const interpolatedResults = recognitionResult.map(result => {
-            const cacheKey = result.name + (result.contact_id || '');
+            const cacheKey = `track_${result.trackId}`;
             const velocity = velocityCache.current.get(cacheKey);
             
             if (velocity && result.position) {
-                // Ultra-minimal interpolation for extreme smoothness
-                const interpolationFactor = 0.15; // Ultra-minimal for maximum stability
+                const interpolationFactor = 0.15;
                 return {
                     ...result,
                     position: {
@@ -610,11 +759,23 @@ const FaceRecognition = () => {
     const startRecognitionLoop = () => {
         if (loopActiveRef.current) return;
         loopActiveRef.current = true;
-        setDebugStatus("Ultra-Fast Tracking Active");
-        processFrame();
+        setDebugStatus("Initialising WS...");
         
-        // Start frame interpolation at 120 FPS for extreme smoothness
-        frameInterpolationRef.current = setInterval(interpolateFrames, 8); // ~120 FPS
+        // Connect WS - which triggers processFrame loop on open
+        if (userIdRef.current) {
+            connectFaceWebSocket();
+        } else {
+             // Wait for user ID
+             const checkUser = setInterval(() => {
+                 if (userIdRef.current) {
+                     clearInterval(checkUser);
+                     connectFaceWebSocket();
+                 }
+             }, 100);
+        }
+        
+        // Start frame interpolation at 120 FPS
+        frameInterpolationRef.current = setInterval(interpolateFrames, 8); 
     };
 
     useEffect(() => {
@@ -622,6 +783,11 @@ const FaceRecognition = () => {
         startRecognitionLoop();
         return () => {
             loopActiveRef.current = false;
+            // Close WS
+            if (faceWsRef.current) {
+                faceWsRef.current.close();
+                faceWsRef.current = null;
+            }
             if (intervalRef.current) clearInterval(intervalRef.current);
             if (frameInterpolationRef.current) clearInterval(frameInterpolationRef.current);
             if (requestAnimationFrameId.current) cancelAnimationFrame(requestAnimationFrameId.current);

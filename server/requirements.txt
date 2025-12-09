@@ -2,6 +2,7 @@
 fastapi>=0.123.4
 uvicorn
 openai-whisper
+faster-whisper
 sounddevice
 webrtcvad-wheels
 numpy>=2.0

@@ -27,7 +27,7 @@ const DashboardHeader = ({ onMenuClick }) => {
   const [showResults, setShowResults] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const searchRef = useRef(null);
-  
+
   const [notificationCount, setNotificationCount] = useState(0);
   const [glassesConnected] = useState(true);
   const [batteryLevel, setBatteryLevel] = useState(87);
@@ -53,10 +53,10 @@ const DashboardHeader = ({ onMenuClick }) => {
   // Get all results as flat array for keyboard navigation
   const getAllResults = () => {
     const results = [];
-    
+
     // Add pages first
     pageResults.forEach(page => results.push({ type: 'page', data: page }));
-    
+
     // Add data results
     if (searchResults) {
       searchResults.contacts?.forEach(item => results.push({ type: 'contact', data: item }));
@@ -65,7 +65,7 @@ const DashboardHeader = ({ onMenuClick }) => {
       searchResults.alerts?.forEach(item => results.push({ type: 'alert', data: item }));
       searchResults.sos_contacts?.forEach(item => results.push({ type: 'sos', data: item }));
     }
-    
+
     return results;
   };
 
@@ -79,7 +79,7 @@ const DashboardHeader = ({ onMenuClick }) => {
         event.preventDefault();
         return;
       }
-      
+
       // Ctrl/Cmd + K to focus search
       if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
         event.preventDefault();
@@ -92,7 +92,7 @@ const DashboardHeader = ({ onMenuClick }) => {
       if (showResults && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
         event.preventDefault();
         const allResults = getAllResults();
-        
+
         if (event.key === 'ArrowDown') {
           setSelectedIndex(prev => (prev < allResults.length - 1 ? prev + 1 : prev));
         } else {
@@ -105,7 +105,7 @@ const DashboardHeader = ({ onMenuClick }) => {
         event.preventDefault();
         const allResults = getAllResults();
         const selected = allResults[selectedIndex];
-        
+
         if (selected) {
           if (selected.type === 'page') {
             navigate(selected.data.path);
@@ -144,7 +144,7 @@ const DashboardHeader = ({ onMenuClick }) => {
       try {
         const response = await searchApi.search(searchQuery);
         setSearchResults(response.data);
-        
+
         // Merge backend page results with client-side page results
         if (response.data.pages && response.data.pages.length > 0) {
           // Convert backend page results to match client format
@@ -160,7 +160,7 @@ const DashboardHeader = ({ onMenuClick }) => {
               relevance: p.relevance
             };
           });
-          
+
           // Merge with client-side results, prioritizing backend results
           const clientPages = PAGES_INDEX.filter(page => {
             const query = searchQuery.toLowerCase().trim();
@@ -168,7 +168,7 @@ const DashboardHeader = ({ onMenuClick }) => {
             const keywordMatch = page.keywords.some(keyword => keyword.startsWith(query) || keyword.includes(query));
             return nameMatch || keywordMatch;
           });
-          
+
           // Combine and deduplicate
           const allPages = [...backendPages];
           clientPages.forEach(cp => {
@@ -176,7 +176,7 @@ const DashboardHeader = ({ onMenuClick }) => {
               allPages.push(cp);
             }
           });
-          
+
           setPageResults(allPages.slice(0, 5));
         } else {
           // Fallback to client-side search if no backend results
@@ -298,11 +298,11 @@ const DashboardHeader = ({ onMenuClick }) => {
 
   const highlightMatch = (text, query) => {
     if (!text || !query) return text;
-    
+
     const parts = text.split(new RegExp(`(${query})`, 'gi'));
-    return parts.map((part, i) => 
-      part.toLowerCase() === query.toLowerCase() ? 
-        <mark key={i} className="bg-yellow-200 text-gray-900 font-medium">{part}</mark> : 
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.toLowerCase() ?
+        <mark key={i} className="bg-yellow-200 text-gray-900 font-medium">{part}</mark> :
         part
     );
   };
@@ -311,7 +311,7 @@ const DashboardHeader = ({ onMenuClick }) => {
     const primaryText = item.name || item.title || item.contact_name || item.summary || 'Unknown';
     const secondaryText = item.matchedContent || item.relationship || item.summary || item.message || item.notes || item.type || '';
     const isSelected = index === selectedIndex;
-    
+
     return (
       <div
         key={`${type}-${item.id || item.path}`}
@@ -319,13 +319,11 @@ const DashboardHeader = ({ onMenuClick }) => {
           onClick();
           clearSearch();
         }}
-        className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-start gap-3 transition-all duration-150 group ${
-          isSelected ? 'bg-indigo-100' : 'hover:bg-indigo-50'
-        }`}
+        className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-start gap-3 transition-all duration-150 group ${isSelected ? 'bg-indigo-100' : 'hover:bg-indigo-50'
+          }`}
       >
-        <div className={`mt-1 shrink-0 transition-colors ${
-          isSelected ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600'
-        }`}>{icon}</div>
+        <div className={`mt-1 shrink-0 transition-colors ${isSelected ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600'
+          }`}>{icon}</div>
         <div className="min-w-0 flex-1">
           <div className="font-medium text-gray-900 truncate">
             {highlightMatch(primaryText, searchQuery)}
@@ -337,9 +335,9 @@ const DashboardHeader = ({ onMenuClick }) => {
           )}
           {item.timestamp && (
             <div className='text-xs text-gray-400 mt-1'>
-              {new Date(item.timestamp).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
+              {new Date(item.timestamp).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
@@ -373,7 +371,7 @@ const DashboardHeader = ({ onMenuClick }) => {
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-      <div className="flex items-center justify-between p-[19px]">
+      <div className="flex items-center justify-between p-4 md:p-[19px]">
         {/* Left: Menu + Search */}
         <div className="flex items-center gap-4 flex-1">
           <button
@@ -385,33 +383,33 @@ const DashboardHeader = ({ onMenuClick }) => {
 
           <div className="relative flex-1 max-w-md" ref={searchRef}>
             <div className="relative">
-                {isSearching ? (
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5">
-                    <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : (
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                )}
-                <input
-                    type="text"
-                    placeholder="Search everything... (⌘K)"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => {
-                        if (searchQuery.length >= MIN_SEARCH_CHARS) setShowResults(true);
-                    }}
-                    className="w-full pl-12 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl
+              {isSearching ? (
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5">
+                  <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : (
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+              )}
+              <input
+                type="text"
+                placeholder="Search everything... (⌘K)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  if (searchQuery.length >= MIN_SEARCH_CHARS) setShowResults(true);
+                }}
+                className="w-full pl-12 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl
                         focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
                         transition-all duration-200 text-sm placeholder:text-gray-400"
-                />
-                {searchQuery && !isSearching && (
+              />
+              {searchQuery && !isSearching && (
                 <button
-                    onClick={clearSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                    <X className="h-4 w-4" />
+                  <X className="h-4 w-4" />
                 </button>
-                )}
+              )}
             </div>
 
             {/* Search Results Dropdown */}
@@ -472,7 +470,7 @@ const DashboardHeader = ({ onMenuClick }) => {
                           <User className="h-3.5 w-3.5" />
                           Contacts ({searchResults.contacts.length})
                         </div>
-                        {searchResults.contacts.map((contact, idx) => 
+                        {searchResults.contacts.map((contact, idx) =>
                           renderSearchResultItem(
                             contact,
                             'contact',
@@ -540,7 +538,7 @@ const DashboardHeader = ({ onMenuClick }) => {
                         )}
                       </div>
                     )}
-                    
+
                     {/* SOS Contacts */}
                     {searchResults?.sos_contacts?.length > 0 && (
                       <div className="border-b border-gray-100">
@@ -641,7 +639,7 @@ const DashboardHeader = ({ onMenuClick }) => {
             </button>
             <button
               onClick={logout}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-red-600"
+              className="hidden md:block p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-red-600"
               title="Logout"
             >
               <LogOut className="h-5 w-5" />

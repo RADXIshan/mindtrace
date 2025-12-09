@@ -1,9 +1,9 @@
 import { AlertTriangle, X } from 'lucide-react';
 
-const DeleteConfirmationModal = ({ 
-  isOpen, 
-  onClose, 
-  onConfirm, 
+const DeleteConfirmationModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
   title = "Delete Item",
   message = "Are you sure you want to delete this item? This action cannot be undone.",
   confirmText = "Delete",
@@ -18,8 +18,8 @@ const DeleteConfirmationModal = ({
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -28,7 +28,7 @@ const DeleteConfirmationModal = ({
     >
       <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
               <AlertTriangle className="h-6 w-6 text-red-600" />
@@ -44,7 +44,7 @@ const DeleteConfirmationModal = ({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <p className="text-gray-700 leading-relaxed">
             {message}
           </p>
@@ -56,7 +56,7 @@ const DeleteConfirmationModal = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-gray-200 flex gap-3">
+        <div className="p-4 md:p-6 border-t border-gray-200 flex gap-3">
           <button
             onClick={onClose}
             className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"

@@ -117,19 +117,19 @@ const InteractionHistory = () => {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
           Interaction History
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-base md:text-lg text-gray-600">
           Review and analyze past conversations
         </p>
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 mb-6">
         <div className="flex flex-col gap-4">
           {/* Search Row */}
           <div className="flex flex-col md:flex-row gap-4">
@@ -138,7 +138,7 @@ const InteractionHistory = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                placeholder={useSemanticSearch ? "Search by meaning (e.g., 'happy memories', 'health discussions')..." : "Search by name, topic, or keyword..."}
+                placeholder={useSemanticSearch ? "Search by meaning..." : "Search by name, topic, or keyword..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl
@@ -149,57 +149,55 @@ const InteractionHistory = () => {
           </div>
 
           {/* Filters Row */}
-          <div className="flex flex-col md:flex-row gap-4">
-
-
+          <div className="grid grid-cols-2 lg:flex lg:flex-row gap-3">
 
             {/* Semantic Search Toggle */}
             <button
               onClick={() => setUseSemanticSearch(!useSemanticSearch)}
-              className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2
+              className={`px-4 md:px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2
                 ${useSemanticSearch
                   ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
                   : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
                 }`}
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              AI Search
+              <span className="truncate">AI Search</span>
             </button>
 
             {/* Starred Filter */}
             <button
               onClick={() => setStarredOnly(!starredOnly)}
-              className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2
+              className={`px-4 md:px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2
                 ${starredOnly
                   ? 'bg-yellow-100 text-yellow-700 border-2 border-yellow-300'
                   : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
                 }`}
             >
-              <Star className={`h-5 w-5 ${starredOnly ? 'fill-yellow-700' : ''}`} />
-              Starred
+              <Star className={`h-5 w-5 shrink-0 ${starredOnly ? 'fill-yellow-700' : ''}`} />
+              <span className="truncate">Starred</span>
             </button>
 
             {/* Sync Conversations */}
             <button
               onClick={handleSyncConversations}
               disabled={syncing}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700
-                transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 md:px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700
+                transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Syncing...' : 'Sync'}
+              <RefreshCw className={`h-5 w-5 shrink-0 ${syncing ? 'animate-spin' : ''}`} />
+              <span className="truncate">{syncing ? 'Syncing...' : 'Sync'}</span>
             </button>
 
             {/* Export */}
             <button
               onClick={handleExport}
-              className="px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800
-                transition-all duration-200 flex items-center gap-2"
+              className="px-4 md:px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800
+                transition-all duration-200 flex items-center justify-center gap-2"
             >
-              <Download className="h-5 w-5" />
-              Export
+              <Download className="h-5 w-5 shrink-0" />
+              <span className="truncate">Export</span>
             </button>
           </div>
         </div>
@@ -238,7 +236,7 @@ const InteractionHistory = () => {
             <div className="p-6">
               <div className="flex items-start gap-4">
                 {/* Avatar */}
-                <ContactAvatar 
+                <ContactAvatar
                   contact={{
                     name: interaction.contact_name,
                     avatar: interaction.contact_avatar,
@@ -321,7 +319,7 @@ const InteractionHistory = () => {
           <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <ContactAvatar 
+                <ContactAvatar
                   contact={{
                     name: selectedInteraction.contact_name,
                     avatar: selectedInteraction.contact_avatar,

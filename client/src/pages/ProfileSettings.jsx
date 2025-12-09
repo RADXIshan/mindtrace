@@ -6,14 +6,14 @@ import UnsavedChangesModal from '../components/UnsavedChangesModal';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 
 const ProfileSettings = () => {
-  
+
   const [profile, setProfile] = useState({
     full_name: '',
     email: '',
     created_at: null,
     profile_image_url: null,
   });
-  
+
   const [originalProfile, setOriginalProfile] = useState({
     full_name: '',
     email: '',
@@ -21,7 +21,7 @@ const ProfileSettings = () => {
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -31,7 +31,7 @@ const ProfileSettings = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  
+
   const [passwordData, setPasswordData] = useState({
     current_password: '',
     new_password: '',
@@ -59,7 +59,7 @@ const ProfileSettings = () => {
   // Track changes
   useEffect(() => {
     if (!loading && originalProfile.full_name !== undefined) {
-      const changed = 
+      const changed =
         profile.full_name !== originalProfile.full_name ||
         profile.email !== originalProfile.email;
       setHasUnsavedChanges(changed);
@@ -75,7 +75,7 @@ const ProfileSettings = () => {
         full_name: response.data.full_name || '',
         email: response.data.email || '',
       });
-      
+
       // Dispatch event to update sidebar and header
       window.dispatchEvent(new CustomEvent('profileUpdated', { detail: response.data }));
     } catch (error) {
@@ -89,7 +89,7 @@ const ProfileSettings = () => {
   const handleSave = async (shouldNavigate = false) => {
     setSaving(true);
     setMessage({ type: '', text: '' });
-    
+
     const promise = userApi.updateProfile({
       full_name: profile.full_name,
       email: profile.email,
@@ -103,7 +103,7 @@ const ProfileSettings = () => {
           full_name: profile.full_name,
           email: profile.email,
         });
-        
+
         setHasUnsavedChanges(false);
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
         setTimeout(() => setMessage({ type: '', text: '' }), 3000);
@@ -117,9 +117,9 @@ const ProfileSettings = () => {
       },
       error: (err) => {
         console.error('Error updating profile:', err);
-        setMessage({ 
-          type: 'error', 
-          text: err.response?.data?.detail || 'Failed to update profile' 
+        setMessage({
+          type: 'error',
+          text: err.response?.data?.detail || 'Failed to update profile'
         });
         return err.response?.data?.detail || 'Failed to update profile';
       }
@@ -136,7 +136,7 @@ const ProfileSettings = () => {
     });
     setHasUnsavedChanges(false);
     setShowUnsavedModal(false);
-    
+
     // If there was a pending navigation, proceed with it
     if (blockerRef.current) {
       blockerRef.current.proceed();
@@ -157,7 +157,7 @@ const ProfileSettings = () => {
 
     setSaving(true);
     setMessage({ type: '', text: '' });
-    
+
     const promise = userApi.changePassword({
       current_password: passwordData.current_password,
       new_password: passwordData.new_password,
@@ -175,9 +175,9 @@ const ProfileSettings = () => {
       },
       error: (err) => {
         console.error('Error changing password:', err);
-        setMessage({ 
-          type: 'error', 
-          text: err.response?.data?.detail || 'Failed to change password' 
+        setMessage({
+          type: 'error',
+          text: err.response?.data?.detail || 'Failed to change password'
         });
         return err.response?.data?.detail || 'Failed to change password';
       }
@@ -203,9 +203,9 @@ const ProfileSettings = () => {
       },
       error: (err) => {
         console.error('Error deleting account:', err);
-        setMessage({ 
-          type: 'error', 
-          text: err.response?.data?.detail || 'Failed to delete account' 
+        setMessage({
+          type: 'error',
+          text: err.response?.data?.detail || 'Failed to delete account'
         });
         return err.response?.data?.detail || 'Failed to delete account';
       }
@@ -249,9 +249,9 @@ const ProfileSettings = () => {
       },
       error: (err) => {
         console.error('Error uploading image:', err);
-        setMessage({ 
-          type: 'error', 
-          text: err.response?.data?.detail || 'Failed to upload image' 
+        setMessage({
+          type: 'error',
+          text: err.response?.data?.detail || 'Failed to upload image'
         });
         return err.response?.data?.detail || 'Failed to upload image';
       }
@@ -282,9 +282,9 @@ const ProfileSettings = () => {
       },
       error: (err) => {
         console.error('Error deleting image:', err);
-        setMessage({ 
-          type: 'error', 
-          text: err.response?.data?.detail || 'Failed to delete image' 
+        setMessage({
+          type: 'error',
+          text: err.response?.data?.detail || 'Failed to delete image'
         });
         return err.response?.data?.detail || 'Failed to delete image';
       }
@@ -295,9 +295,9 @@ const ProfileSettings = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short' 
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short'
     });
   };
 
@@ -312,7 +312,7 @@ const ProfileSettings = () => {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -342,11 +342,10 @@ const ProfileSettings = () => {
 
       {/* Success/Error Message */}
       {message.text && (
-        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
-          message.type === 'success' 
-            ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
-            : 'bg-red-50 border border-red-200 text-red-800'
-        }`}>
+        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success'
+          ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+          : 'bg-red-50 border border-red-200 text-red-800'
+          }`}>
           {message.type === 'success' ? (
             <CheckCircle className="h-5 w-5" />
           ) : (
@@ -404,7 +403,7 @@ const ProfileSettings = () => {
               Security
             </h2>
 
-            <button 
+            <button
               onClick={() => setShowPasswordModal(true)}
               className="w-full px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
             >
@@ -455,7 +454,7 @@ const ProfileSettings = () => {
                   </div>
                 )}
               </div>
-              
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -463,7 +462,7 @@ const ProfileSettings = () => {
                 onChange={handleImageUpload}
                 className="hidden"
               />
-              
+
               <div className="mt-4 flex gap-2">
                 {profile.profile_image_url ? (
                   <>
@@ -571,7 +570,7 @@ const ProfileSettings = () => {
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900">Change Password</h2>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Current Password
@@ -667,7 +666,7 @@ const ProfileSettings = () => {
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900">Delete Account</h2>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <p className="text-gray-600 mb-4">
                 Are you absolutely sure? This action cannot be undone. All your data, including interaction history, contacts, and settings will be permanently deleted.
               </p>

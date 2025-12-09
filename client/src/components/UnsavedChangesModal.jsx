@@ -4,9 +4,9 @@ const UnsavedChangesModal = ({ isOpen, onSave, onDiscard, onCancel, saving = fal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6">
       <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-4 md:p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
               <AlertTriangle className="h-6 w-6 text-amber-600" />
@@ -14,12 +14,12 @@ const UnsavedChangesModal = ({ isOpen, onSave, onDiscard, onCancel, saving = fal
             <h2 className="text-2xl font-bold text-gray-900">Unsaved Changes</h2>
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <p className="text-gray-600 text-lg">
             You have unsaved changes. What would you like to do?
           </p>
         </div>
-        <div className="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
+        <div className="p-4 md:p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
           <button
             onClick={onCancel}
             className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"

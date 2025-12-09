@@ -37,15 +37,110 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
         if (!timestamp) return null;
         try {
             const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            
+            // If today, show "Today at HH:MM AM/PM"
+            if (diffDays === 0) {
+                const timeStr = new Intl.DateTimeFormat('en-IN', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Kolkata'
+                }).format(date);
+                return `Today at ${timeStr}`;
+            }
+            
+            // If yesterday, show "Yesterday at HH:MM AM/PM"
+            if (diffDays === 1) {
+                const timeStr = new Intl.DateTimeFormat('en-IN', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Kolkata'
+                }).format(date);
+                return `Yesterday at ${timeStr}`;
+            }
+            
+            // If within last week, show "Day at HH:MM AM/PM"
+            if (diffDays < 7) {
+                return new Intl.DateTimeFormat('en-IN', {
+                    weekday: 'short',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Kolkata'
+                }).format(date);
+            }
+            
+            // Otherwise show full date with time "DD MMM YYYY, HH:MM AM/PM"
             return new Intl.DateTimeFormat('en-IN', {
-                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
                 hour: 'numeric',
-                minute: 'numeric',
+                minute: '2-digit',
                 hour12: true,
                 timeZone: 'Asia/Kolkata'
             }).format(date);
         } catch (e) {
             return null;
+        }
+    };
+
+    const formatConversationDate = (timestamp) => {
+        if (!timestamp) return '';
+        try {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            
+            // If today, show "Today, HH:MM AM/PM"
+            if (diffDays === 0) {
+                const timeStr = new Intl.DateTimeFormat('en-IN', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Kolkata'
+                }).format(date);
+                return `Today, ${timeStr}`;
+            }
+            
+            // If yesterday, show "Yesterday, HH:MM AM/PM"
+            if (diffDays === 1) {
+                const timeStr = new Intl.DateTimeFormat('en-IN', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Kolkata'
+                }).format(date);
+                return `Yesterday, ${timeStr}`;
+            }
+            
+            // If within last week, show "Day, HH:MM AM/PM"
+            if (diffDays < 7) {
+                return new Intl.DateTimeFormat('en-IN', {
+                    weekday: 'short',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Kolkata'
+                }).format(date);
+            }
+            
+            // Otherwise show "DD MMM, HH:MM AM/PM"
+            return new Intl.DateTimeFormat('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
+            }).format(date);
+        } catch (e) {
+            return timestamp;
         }
     };
 
@@ -105,10 +200,12 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
 
                         {history && history.length > 0 ? (
                             <div className="flex flex-col gap-2">
-                                <span className={metaLabelClass}>Past Conversations</span>
+                                <span className={metaLabelClass}>Last Conversation</span>
                                 {history.map((item, i) => (
                                     <div key={i} className={`flex flex-col relative pl-3 border-l-2 ${isDark ? 'border-indigo-500/50' : 'border-indigo-200'}`}>
-                                        <span className={`text-[10px] font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>{item.date}</span>
+                                        <span className={`text-[10px] font-bold ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>
+                                            {formatConversationDate(item.timestamp || item.date)}
+                                        </span>
                                         <p className={`text-xs leading-snug italic ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                                             "{item.summary}"
                                         </p>

@@ -64,25 +64,30 @@ async def recognize_face_endpoint(
                 # Optimized: Fetch top interactions per contact
                 interaction_map = {} 
                 for cid in contact_ids:
-                    # Fetch a few more to find one that fits the time criteria
+                    # Fetch recent interactions to find the most recent one that's at least 1 hour old
                     recent = db.query(Interaction).filter(
                         Interaction.contact_id == cid
-                    ).order_by(Interaction.timestamp.desc()).limit(5).all()
+                    ).order_by(Interaction.timestamp.desc()).limit(20).all()
                     
                     if recent:
                         formatted = []
                         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
                         
-                        # Find the latest interaction that is OLDER than 1 hour
+                        # Find the most recent interaction that is at least 1 hour old
                         for r in recent:
-                             if r.timestamp < cutoff_time:
-                                 time_str = r.timestamp.strftime("%d %b") if r.timestamp else ""
-                                 formatted.append({
-                                     "summary": r.summary,
-                                     "date": time_str
-                                 })
-                                 # User requested ONLY the latest past conversation with >1h gap
-                                 break 
+                            # Ensure timestamp has timezone info
+                            r_timestamp = r.timestamp
+                            if r_timestamp.tzinfo is None:
+                                r_timestamp = r_timestamp.replace(tzinfo=timezone.utc)
+                            
+                            if r_timestamp < cutoff_time:
+                                formatted.append({
+                                    "summary": r.summary,
+                                    "date": r_timestamp.isoformat(),
+                                    "timestamp": r_timestamp.isoformat()
+                                })
+                                # Only show the most recent one that's at least 1 hour old
+                                break 
                         
                         interaction_map[cid] = formatted
                 
@@ -96,7 +101,11 @@ async def recognize_face_endpoint(
                             # Capture PREVIOUS last_seen time
                             last_seen_time = contact.last_seen
                             
-                            # Filter Last Seen: Only show if > 1 hour ago
+                            # Ensure timezone info
+                            if last_seen_time and last_seen_time.tzinfo is None:
+                                last_seen_time = last_seen_time.replace(tzinfo=timezone.utc)
+                            
+                            # Filter Last Seen: Only show if at least 1 hour ago
                             cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
                             
                             if last_seen_time and last_seen_time < cutoff_time:
@@ -211,20 +220,25 @@ async def websocket_recognize(
                     for cid in contact_ids:
                         recent = db.query(Interaction).filter(
                             Interaction.contact_id == cid
-                        ).order_by(Interaction.timestamp.desc()).limit(5).all()
+                        ).order_by(Interaction.timestamp.desc()).limit(20).all()
                         
                         if recent:
                             formatted = []
                             cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
                             
                             for r in recent:
-                                if r.timestamp < cutoff_time:
-                                    time_str = r.timestamp.strftime("%d %b") if r.timestamp else ""
+                                # Ensure timestamp has timezone info
+                                r_timestamp = r.timestamp
+                                if r_timestamp.tzinfo is None:
+                                    r_timestamp = r_timestamp.replace(tzinfo=timezone.utc)
+                                
+                                if r_timestamp < cutoff_time:
                                     formatted.append({
                                         "summary": r.summary,
-                                        "date": time_str
+                                        "date": r_timestamp.isoformat(),
+                                        "timestamp": r_timestamp.isoformat()
                                     })
-                                    break # Only want the latest one > 1h
+                                    break # Only want the most recent one that's at least 1h old
                             
                             interaction_map[cid] = formatted
 
@@ -236,7 +250,11 @@ async def websocket_recognize(
                             if contact:
                                 last_seen_time = contact.last_seen
                                 
-                                # Filter Last Seen: Only show if > 1 hour ago
+                                # Ensure timezone info
+                                if last_seen_time and last_seen_time.tzinfo is None:
+                                    last_seen_time = last_seen_time.replace(tzinfo=timezone.utc)
+                                
+                                # Filter Last Seen: Only show if at least 1 hour ago
                                 cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
                                 
                                 if last_seen_time and last_seen_time < cutoff_time:

@@ -3,7 +3,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import base64
 import cv2
 import numpy as np
@@ -37,6 +37,39 @@ def get_photo_url(contact_id: int, has_photo: bool, request: Request) -> Optiona
     base_url = str(request.base_url).rstrip('/')
     return f"{base_url}/contacts/{contact_id}/photo"
 
+def get_effective_last_seen(contact_id: int, db: Session) -> Optional[datetime]:
+    """
+    Calculate the effective 'Last Met' time based on 1-hour minimum gap.
+    Returns the most recent interaction that is at least 1 hour old from current time.
+    """
+    from ..models import Interaction
+    
+    # Fetch recent interactions (descending order)
+    interactions = db.query(Interaction).filter(
+        Interaction.contact_id == contact_id
+    ).order_by(Interaction.timestamp.desc()).limit(100).all()
+    
+    if not interactions:
+        return None
+        
+    current_time = datetime.now(timezone.utc)
+    cutoff_time = current_time - timedelta(hours=1)
+    
+    # Find the most recent interaction that is at least 1 hour old
+    for interaction in interactions:
+        interaction_time = interaction.timestamp
+        
+        # Ensure timezone info
+        if interaction_time.tzinfo is None:
+            interaction_time = interaction_time.replace(tzinfo=timezone.utc)
+        
+        # Return the first (most recent) interaction that's at least 1 hour old
+        if interaction_time < cutoff_time:
+            return interaction_time
+    
+    # No interaction found that's at least 1 hour old
+    return None
+
 def contact_to_response(contact: Contact, request: Request, db: Optional[Session] = None) -> dict:
     """Convert a Contact ORM object to a response dict, handling binary photo data"""
     # Calculate total interactions if db session is provided
@@ -59,7 +92,8 @@ def contact_to_response(contact: Contact, request: Request, db: Optional[Session
         "email": contact.email,
         "notes": contact.notes,
         "visit_frequency": contact.visit_frequency,
-        "last_seen": contact.last_seen,
+        "visit_frequency": contact.visit_frequency,
+        "last_seen": get_effective_last_seen(contact.id, db) if db else contact.last_seen,
         "is_active": contact.is_active,
         "profile_photo": None,  # Never return binary data
         "profile_photo_url": get_photo_url(contact.id, contact.profile_photo is not None, request),

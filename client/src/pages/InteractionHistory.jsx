@@ -112,8 +112,31 @@ const InteractionHistory = () => {
 
 
 
-  const handleExport = () => {
-    alert('Export functionality would download interaction history as PDF/CSV');
+  const handleExport = async (format) => {
+    try {
+      const params = {
+        search: searchQuery,
+        starred: starredOnly ? true : undefined
+      };
+
+      const response = await interactionsApi.export(params, format);
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `interactions_${timestamp}.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Exported as ${format.toUpperCase()}`);
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast.error("Failed to export interactions");
+    }
   };
 
   return (
@@ -192,15 +215,31 @@ const InteractionHistory = () => {
               {syncing ? 'Syncing...' : 'Sync'}
             </button>
 
-            {/* Export */}
-            <button
-              onClick={handleExport}
-              className="px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800
-                transition-all duration-200 flex items-center gap-2"
-            >
-              <Download className="h-5 w-5" />
-              Export
-            </button>
+            {/* Export Dropdown */}
+            <div className="relative group">
+              <button
+                className="px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800
+                  transition-all duration-200 flex items-center gap-2"
+              >
+                <Download className="h-5 w-5" />
+                Export
+              </button>
+
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden hidden group-hover:block z-20">
+                <button
+                  onClick={() => handleExport('csv')}
+                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors border-b border-gray-50"
+                >
+                  Export as CSV
+                </button>
+                <button
+                  onClick={() => handleExport('pdf')}
+                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors"
+                >
+                  Export as PDF
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -238,7 +277,7 @@ const InteractionHistory = () => {
             <div className="p-6">
               <div className="flex items-start gap-4">
                 {/* Avatar */}
-                <ContactAvatar 
+                <ContactAvatar
                   contact={{
                     name: interaction.contact_name,
                     avatar: interaction.contact_avatar,
@@ -321,7 +360,7 @@ const InteractionHistory = () => {
           <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <ContactAvatar 
+                <ContactAvatar
                   contact={{
                     name: selectedInteraction.contact_name,
                     avatar: selectedInteraction.contact_avatar,

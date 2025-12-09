@@ -89,3 +89,4 @@ easydict==1.13
 flatbuffers==25.9.23
 cython==3.2.2
 pydantic[email]
+reportlab>=4.0.0

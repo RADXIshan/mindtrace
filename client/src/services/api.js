@@ -68,6 +68,7 @@ export const interactionsApi = {
   toggleStar: (id) => api.put(`/interactions/${id}/star`),
   search: (query, limit = 10) => api.get('/interactions/search', { params: { query, limit } }),
   syncToChroma: () => api.post('/interactions/sync-to-chroma'),
+  export: (params, format) => api.get('/interactions/export', { params: { ...params, format }, responseType: 'blob' }),
 };
 
 export const alertsApi = {
@@ -95,7 +96,7 @@ export const sosApi = {
   updateContact: (id, data) => api.put(`/sos/contacts/${id}`, data),
   getConfig: () => api.get('/sos/config'),
   updateConfig: (data) => api.put('/sos/config', data),
-  
+
   // SOS Alerts
   createAlert: (data) => api.post('/sos/alerts', data),
   getAlerts: (params) => api.get('/sos/alerts', { params }),
@@ -133,16 +134,16 @@ export const aiApi = {
   // Summarization
   summarize: (data) => api.post('/ai/summarize', data),
   summarizeContact: (contactId) => api.post(`/ai/summarize/contact/${contactId}`),
-  
+
   // RAG queries
-  ragQuery: (question, nResults = 5, includeContext = true) => 
+  ragQuery: (question, nResults = 5, includeContext = true) =>
     api.post('/ai/rag/query', { question, n_results: nResults, include_context: includeContext }),
   ragMultiTurn: (question, conversationHistory = [], nResults = 5) =>
     api.post('/ai/rag/multi-turn', { question, conversation_history: conversationHistory, n_results: nResults }),
-  
+
   // Insights
   getInsights: (topic = null) => api.post('/ai/insights', { topic }),
-  
+
   // Health check
   healthCheck: () => api.get('/ai/health'),
 };

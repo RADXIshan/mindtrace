@@ -49,6 +49,7 @@ async def recognize_face_endpoint(
         # If contacts are recognized, enrich with details (batch query for performance)
         if result:
             from datetime import datetime, timezone
+            from zoneinfo import ZoneInfo
             from ..models import Interaction
             
             # Collect all contact IDs for batch query
@@ -101,12 +102,20 @@ async def recognize_face_endpoint(
                             # Capture PREVIOUS last_seen time
                             last_seen_time = contact.last_seen
                             
-                            # Ensure timezone info
-                            if last_seen_time and last_seen_time.tzinfo is None:
-                                last_seen_time = last_seen_time.replace(tzinfo=timezone.utc)
+                            # Get current time in IST
+                            ist_tz = ZoneInfo("Asia/Kolkata")
+                            current_time_ist = datetime.now(ist_tz)
+                            
+                            # Ensure timezone info - convert to IST if needed
+                            if last_seen_time:
+                                if last_seen_time.tzinfo is None:
+                                    # Assume UTC if no timezone
+                                    last_seen_time = last_seen_time.replace(tzinfo=timezone.utc)
+                                # Convert to IST for comparison
+                                last_seen_time = last_seen_time.astimezone(ist_tz)
                             
                             # Filter Last Seen: Only show if at least 1 hour ago
-                            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
+                            cutoff_time = current_time_ist - timedelta(hours=1)
                             
                             if last_seen_time and last_seen_time < cutoff_time:
                                 res["last_seen_timestamp"] = last_seen_time.isoformat()
@@ -118,8 +127,8 @@ async def recognize_face_endpoint(
                             res["recent_interactions"] = history
                             res["last_conversation_summary"] = history[0]["summary"] if history else None
                             
-                            # Update last_seen to NOW
-                            contact.last_seen = datetime.now(timezone.utc)
+                            # Update last_seen to NOW in IST
+                            contact.last_seen = current_time_ist
                 
                 db.commit()
         
@@ -204,6 +213,7 @@ async def websocket_recognize(
             # Enrich results (copy-paste logic from HTTP endpoint for now, can be refactored later)
             if result:
                 from datetime import datetime, timezone
+                from zoneinfo import ZoneInfo
                 from ..models import Interaction, Contact
                 
                 contact_ids = [res["contact_id"] for res in result if res.get("name") != "Unknown" and "contact_id" in res]
@@ -250,12 +260,20 @@ async def websocket_recognize(
                             if contact:
                                 last_seen_time = contact.last_seen
                                 
-                                # Ensure timezone info
-                                if last_seen_time and last_seen_time.tzinfo is None:
-                                    last_seen_time = last_seen_time.replace(tzinfo=timezone.utc)
+                                # Get current time in IST
+                                ist_tz = ZoneInfo("Asia/Kolkata")
+                                current_time_ist = datetime.now(ist_tz)
+                                
+                                # Ensure timezone info - convert to IST if needed
+                                if last_seen_time:
+                                    if last_seen_time.tzinfo is None:
+                                        # Assume UTC if no timezone
+                                        last_seen_time = last_seen_time.replace(tzinfo=timezone.utc)
+                                    # Convert to IST for comparison
+                                    last_seen_time = last_seen_time.astimezone(ist_tz)
                                 
                                 # Filter Last Seen: Only show if at least 1 hour ago
-                                cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
+                                cutoff_time = current_time_ist - timedelta(hours=1)
                                 
                                 if last_seen_time and last_seen_time < cutoff_time:
                                     res["last_seen_timestamp"] = last_seen_time.isoformat()
@@ -269,7 +287,7 @@ async def websocket_recognize(
                                 # Backward compatibility
                                 res["last_conversation_summary"] = history[0]["summary"] if history else None
                                 
-                                contact.last_seen = datetime.now(timezone.utc)
+                                contact.last_seen = current_time_ist
                     
                     db.commit()
 

@@ -193,8 +193,16 @@ export const exportConversation = (messages, format = 'text') => {
         content = messages
             .map((msg) => {
                 const role = msg.role === 'user' ? 'You' : 'Assistant';
-                const time = new Date(msg.timestamp).toLocaleString();
-                return `[${time}] ${role}:\n${msg.content}\n`;
+                const time = new Date(msg.timestamp).toLocaleString('en-IN', {
+                    timeZone: 'Asia/Kolkata',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                return `[${time} IST] ${role}:\n${msg.content}\n`;
             })
             .join('\n---\n\n');
         filename = `chat-export-${Date.now()}.txt`;

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Any
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from ..database import get_db
 from ..models import Interaction, User, Contact
@@ -223,8 +224,16 @@ def create_interaction(
         contact = db.query(Contact).filter(Contact.id == interaction.contact_id).first()
         if contact:
             interaction.contact_name = contact.name
-            
-    db_interaction = Interaction(**interaction.dict(), user_id=current_user.id)
+    
+    # Create interaction with IST timestamp
+    ist_tz = ZoneInfo("Asia/Kolkata")
+    interaction_data = interaction.dict()
+    
+    db_interaction = Interaction(**interaction_data, user_id=current_user.id)
+    # Ensure timestamp is in IST if not already set
+    if not db_interaction.timestamp:
+        db_interaction.timestamp = datetime.now(ist_tz)
+    
     db.add(db_interaction)
     db.commit()
     db.refresh(db_interaction)

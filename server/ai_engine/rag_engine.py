@@ -6,7 +6,8 @@ import os
 from typing import List, Dict, Optional
 from google import genai
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 class InteractionRAG:
     def __init__(self, chroma_collection, db_session: Optional[Session] = None):
@@ -52,7 +53,7 @@ class InteractionRAG:
             contacts = query.all()
             
             # IST timezone (UTC+5:30)
-            ist_tz = timezone(timedelta(hours=5, minutes=30))
+            ist_tz = ZoneInfo("Asia/Kolkata")
             
             contact_list = []
             for contact in contacts:
@@ -60,7 +61,11 @@ class InteractionRAG:
                 last_seen_ist = None
                 if contact.last_seen:
                     # Convert to IST and format as readable string
-                    last_seen_dt = contact.last_seen.replace(tzinfo=timezone.utc).astimezone(ist_tz)
+                    if contact.last_seen.tzinfo is None:
+                        # Assume UTC if no timezone
+                        last_seen_dt = contact.last_seen.replace(tzinfo=timezone.utc).astimezone(ist_tz)
+                    else:
+                        last_seen_dt = contact.last_seen.astimezone(ist_tz)
                     last_seen_ist = last_seen_dt.strftime("%d %B %Y, %I:%M %p IST")
                 
                 contact_list.append({

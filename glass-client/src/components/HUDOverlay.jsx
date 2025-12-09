@@ -324,7 +324,12 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
                     <Battery className="w-5 h-5" />
                     <span className="text-sm font-medium">84%</span>
                     <div className="w-px h-4 bg-white/20" />
-                    <span className="text-sm font-medium">{time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                    <span className="text-sm font-medium">{time.toLocaleTimeString('en-IN', { 
+                        timeZone: 'Asia/Kolkata',
+                        hour: 'numeric', 
+                        minute: '2-digit', 
+                        hour12: true 
+                    })}</span>
                 </div>
             </div>
 

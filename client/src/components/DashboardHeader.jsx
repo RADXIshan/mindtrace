@@ -335,7 +335,8 @@ const DashboardHeader = ({ onMenuClick }) => {
           )}
           {item.timestamp && (
             <div className='text-xs text-gray-400 mt-1'>
-              {new Date(item.timestamp).toLocaleDateString('en-US', {
+              {new Date(item.timestamp).toLocaleDateString('en-IN', {
+                timeZone: 'Asia/Kolkata',
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',

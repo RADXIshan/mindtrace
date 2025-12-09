@@ -1,7 +1,8 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional
+from zoneinfo import ZoneInfo
 
 class ConversationStore:
     def __init__(self, storage_path: str = None, db_session=None, chroma_collection=None):
@@ -28,7 +29,9 @@ class ConversationStore:
 
     def save_conversation(self, profile_id: str, transcript: str, user_id: int = None, contact_id: int = None) -> Dict:
         """Save a conversation entry to JSON, database, and ChromaDB with improved error handling."""
-        timestamp = datetime.now()
+        # Get current time in IST
+        ist_tz = ZoneInfo("Asia/Kolkata")
+        timestamp = datetime.now(ist_tz)
         entry = {
             "profile_id": profile_id,
             "timestamp": timestamp.isoformat(),

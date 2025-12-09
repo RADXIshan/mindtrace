@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import base64
 import cv2
 import numpy as np
@@ -41,6 +42,7 @@ def get_effective_last_seen(contact_id: int, db: Session) -> Optional[datetime]:
     """
     Calculate the effective 'Last Met' time based on 1-hour minimum gap.
     Returns the most recent interaction that is at least 1 hour old from current time.
+    All times are in IST (Indian Standard Time).
     """
     from ..models import Interaction
     
@@ -51,17 +53,21 @@ def get_effective_last_seen(contact_id: int, db: Session) -> Optional[datetime]:
     
     if not interactions:
         return None
-        
-    current_time = datetime.now(timezone.utc)
+    
+    # Get current time in IST
+    ist_tz = ZoneInfo("Asia/Kolkata")
+    current_time = datetime.now(ist_tz)
     cutoff_time = current_time - timedelta(hours=1)
     
     # Find the most recent interaction that is at least 1 hour old
     for interaction in interactions:
         interaction_time = interaction.timestamp
         
-        # Ensure timezone info
+        # Ensure timezone info and convert to IST
         if interaction_time.tzinfo is None:
+            # Assume UTC if no timezone
             interaction_time = interaction_time.replace(tzinfo=timezone.utc)
+        interaction_time = interaction_time.astimezone(ist_tz)
         
         # Return the first (most recent) interaction that's at least 1 hour old
         if interaction_time < cutoff_time:

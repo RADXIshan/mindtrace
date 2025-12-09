@@ -44,7 +44,11 @@ const ChatMessage = ({ message }) => {
     // Format timestamp
     const formattedTime = useMemo(() => {
         const date = new Date(message.timestamp);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString('en-IN', { 
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
     }, [message.timestamp]);
 
     return (

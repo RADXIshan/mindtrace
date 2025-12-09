@@ -16,11 +16,13 @@ const formatDateTime = (timestamp) => {
     const date = new Date(timestamp);
     return {
         date: date.toLocaleDateString('en-IN', {
+            timeZone: 'Asia/Kolkata',
             day: 'numeric',
             month: 'short',
             year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
         }),
         time: date.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
             hour: '2-digit',
             minute: '2-digit',
             hour12: true

@@ -359,9 +359,9 @@ async def websocket_asr(
                     connection_close_reason = "ping_error"
                     break
             
-            # Receive raw bytes (float32 PCM) with timeout
+            # Receive message (can be bytes or text)
             try:
-                data = await asyncio.wait_for(websocket.receive_bytes(), timeout=1.0)
+                message = await asyncio.wait_for(websocket.receive(), timeout=1.0)
             except asyncio.TimeoutError:
                 # Check if we've been idle too long
                 if current_time - last_activity_time > IDLE_TIMEOUT:
@@ -370,7 +370,37 @@ async def websocket_asr(
                     break
                 continue
             
-            if len(data) == 0:
+            # Handle Text Message (Control/JSON)
+            if "text" in message and message["text"]:
+                try:
+                    import json
+                    data = json.loads(message["text"])
+                    if data.get("type") == "update_profile":
+                        new_profile_id = data.get("profileId")
+                        if new_profile_id and new_profile_id != "Unknown":
+                            print(f"Switching conversation profile from '{profile_id}' to '{new_profile_id}'")
+                            profile_id = new_profile_id
+                            
+                            # Try to find new contact info
+                            try:
+                                contact = db.query(Contact).filter(
+                                    Contact.user_id == user_id,
+                                    Contact.name == profile_id,
+                                    Contact.is_active == True
+                                ).first()
+                                if contact:
+                                    contact_id = contact.id
+                                    print(f"Found contact_id {contact_id} for new profile {profile_id}")
+                            except Exception as e:
+                                print(f"Error finding contact for updated profile: {e}")
+                                
+                except Exception as e:
+                    print(f"Error processing text message: {e}")
+                continue
+
+            # Handle Audio Bytes
+            data = message.get("bytes")
+            if not data or len(data) == 0:
                 continue
             
             # Update activity time
@@ -486,9 +516,12 @@ async def websocket_asr(
                     print(f"✓ Final Complete Transcript: {transcript}")
                     
                     if transcript and transcript.strip():
-                        result = linker.link_and_save(profile_id, transcript, user_id=user_id, contact_id=contact_id)
-                        if result:
-                            print(f"✓ Saved to DB/Chroma")
+                        if profile_id == "Unknown":
+                            print("⚠ Skipping save for 'Unknown' profile as requested")
+                        else:
+                            result = linker.link_and_save(profile_id, transcript, user_id=user_id, contact_id=contact_id)
+                            if result:
+                                print(f"✓ Saved to DB/Chroma")
                     else:
                          print("⚠ Empty transcript")
                 else:

@@ -268,7 +268,7 @@ const AlertsNotifications = () => {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
           Alerts & Notifications
         </h1>
@@ -288,8 +288,8 @@ const AlertsNotifications = () => {
                   key={severity}
                   onClick={() => setSelectedSeverity(severity)}
                   className={`px-4 py-2 rounded-xl font-medium transition-all whitespace-nowrap ${selectedSeverity === severity
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-50 text-gray-600'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-50 text-gray-600'
                     }`}
                 >
                   {severity.charAt(0).toUpperCase() + severity.slice(1)}
@@ -340,8 +340,8 @@ const AlertsNotifications = () => {
             <div
               key={alert.id}
               className={`rounded-2xl border-2 p-6 cursor-pointer transition-all hover:shadow-lg ${alert.read
-                  ? 'bg-white border-gray-200'
-                  : `${config.cardBg} ${config.border} shadow-md`
+                ? 'bg-white border-gray-200'
+                : `${config.cardBg} ${config.border} shadow-md`
                 } ${processingAlerts.has(alert.id) ? 'opacity-70 pointer-events-none' : ''}`}
               onClick={() => {
                 if (processingAlerts.has(alert.id)) return;

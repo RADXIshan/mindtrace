@@ -55,25 +55,35 @@ async def recognize_face_endpoint(
             contact_ids = [res["contact_id"] for res in result if res.get("name") != "Unknown" and "contact_id" in res]
             
             if contact_ids:
+                from datetime import timedelta
+
                 # Batch query contacts
                 contacts = db.query(Contact).filter(Contact.id.in_(contact_ids)).all()
                 contact_map = {c.id: c for c in contacts}
                 
-                # Optimized: Fetch top 3 interactions per contact
+                # Optimized: Fetch top interactions per contact
                 interaction_map = {} 
                 for cid in contact_ids:
+                    # Fetch a few more to find one that fits the time criteria
                     recent = db.query(Interaction).filter(
                         Interaction.contact_id == cid
-                    ).order_by(Interaction.timestamp.desc()).limit(3).all()
+                    ).order_by(Interaction.timestamp.desc()).limit(5).all()
                     
                     if recent:
                         formatted = []
+                        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
+                        
+                        # Find the latest interaction that is OLDER than 1 hour
                         for r in recent:
-                             time_str = r.timestamp.strftime("%d %b") if r.timestamp else ""
-                             formatted.append({
-                                 "summary": r.summary,
-                                 "date": time_str
-                             })
+                             if r.timestamp < cutoff_time:
+                                 time_str = r.timestamp.strftime("%d %b") if r.timestamp else ""
+                                 formatted.append({
+                                     "summary": r.summary,
+                                     "date": time_str
+                                 })
+                                 # User requested ONLY the latest past conversation with >1h gap
+                                 break 
+                        
                         interaction_map[cid] = formatted
                 
                 # Enrich results
@@ -85,7 +95,14 @@ async def recognize_face_endpoint(
                         if contact:
                             # Capture PREVIOUS last_seen time
                             last_seen_time = contact.last_seen
-                            res["last_seen_timestamp"] = last_seen_time.isoformat() if last_seen_time else None
+                            
+                            # Filter Last Seen: Only show if > 1 hour ago
+                            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
+                            
+                            if last_seen_time and last_seen_time < cutoff_time:
+                                res["last_seen_timestamp"] = last_seen_time.isoformat()
+                            else:
+                                res["last_seen_timestamp"] = None
                             
                             # Add history list
                             history = interaction_map.get(contact_id, [])
@@ -183,27 +200,32 @@ async def websocket_recognize(
                 contact_ids = [res["contact_id"] for res in result if res.get("name") != "Unknown" and "contact_id" in res]
                 
                 if contact_ids:
+                    from datetime import timedelta
+
                     contacts = db.query(Contact).filter(Contact.id.in_(contact_ids)).all()
                     contact_map = {c.id: c for c in contacts}
                     
-                    # Optimized: Fetch top 3 interactions per contact
-                    # Since N (contacts) is small, simple loop is efficient enough and avoids complex SQL
+                    # Optimized: Fetch top interactions per contact
                     interaction_map = {} # contact_id -> list of summaries
                     
                     for cid in contact_ids:
                         recent = db.query(Interaction).filter(
                             Interaction.contact_id == cid
-                        ).order_by(Interaction.timestamp.desc()).limit(3).all()
+                        ).order_by(Interaction.timestamp.desc()).limit(5).all()
                         
                         if recent:
-                            # Format nicely
                             formatted = []
+                            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
+                            
                             for r in recent:
-                                time_str = r.timestamp.strftime("%d %b") if r.timestamp else ""
-                                formatted.append({
-                                    "summary": r.summary,
-                                    "date": time_str
-                                })
+                                if r.timestamp < cutoff_time:
+                                    time_str = r.timestamp.strftime("%d %b") if r.timestamp else ""
+                                    formatted.append({
+                                        "summary": r.summary,
+                                        "date": time_str
+                                    })
+                                    break # Only want the latest one > 1h
+                            
                             interaction_map[cid] = formatted
 
                     for res in result:
@@ -213,7 +235,14 @@ async def websocket_recognize(
                             
                             if contact:
                                 last_seen_time = contact.last_seen
-                                res["last_seen_timestamp"] = last_seen_time.isoformat() if last_seen_time else None
+                                
+                                # Filter Last Seen: Only show if > 1 hour ago
+                                cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
+                                
+                                if last_seen_time and last_seen_time < cutoff_time:
+                                    res["last_seen_timestamp"] = last_seen_time.isoformat()
+                                else:
+                                    res["last_seen_timestamp"] = None
                                 
                                 # Add history list
                                 history = interaction_map.get(contact_id, [])

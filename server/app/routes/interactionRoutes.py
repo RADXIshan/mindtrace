@@ -152,6 +152,7 @@ def get_interactions(
     limit: int = 100, 
     search: Optional[str] = None,
     starred: Optional[bool] = None,
+    exclude_details: bool = True,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -184,6 +185,10 @@ def get_interactions(
                 if contact.profile_photo:
                     base_url = str(request.base_url).rstrip('/')
                     resp.contact_photo_url = f"{base_url}/contacts/{contact.id}/photo"
+        
+        if exclude_details:
+            resp.full_details = None
+            
         results.append(resp)
         
     return results

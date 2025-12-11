@@ -139,6 +139,22 @@ const InteractionHistory = () => {
     }
   };
 
+  const handleInteractionClick = async (interaction) => {
+    // Set initial data immediately
+    setSelectedInteraction(interaction);
+    
+    // Fetch full details if missing
+    if (!interaction.full_details) {
+      try {
+        const response = await interactionsApi.get(interaction.id);
+        setSelectedInteraction(response.data);
+      } catch (error) {
+        console.error("Failed to load full interaction details:", error);
+        toast.error("Could not load full details");
+      }
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto">
       {/* Header */}
@@ -270,7 +286,7 @@ const InteractionHistory = () => {
             key={interaction.id}
             className="bg-white rounded-2xl border border-gray-200 overflow-hidden
               hover:shadow-lg transition-all duration-300 cursor-pointer group"
-            onClick={() => setSelectedInteraction(interaction)}
+            onClick={() => handleInteractionClick(interaction)}
           >
             <div className="p-6">
               <div className="flex items-start gap-4">

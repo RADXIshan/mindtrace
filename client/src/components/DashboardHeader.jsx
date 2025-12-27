@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, Bell, Menu, Battery, Wifi, LogOut, X, User, MessageCircle, Clock, AlertTriangle, Phone, Home, Settings, HelpCircle, LayoutDashboard } from 'lucide-react';
+import { Search, Bell, Menu, Battery, Wifi, LogOut, X, User, MessageCircle, Clock, AlertTriangle, Phone, Home, Settings, HelpCircle, LayoutDashboard, Loader2 } from 'lucide-react';
 import { logout } from '../services/auth';
 import { userApi, alertsApi, searchApi } from '../services/api';
 import { formatTime12Hour } from '../utils/timeFormat';
@@ -27,6 +27,7 @@ const DashboardHeader = ({ onMenuClick }) => {
   const [showResults, setShowResults] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const searchRef = useRef(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [notificationCount, setNotificationCount] = useState(0);
   const [glassesConnected] = useState(true);
@@ -294,6 +295,10 @@ const DashboardHeader = ({ onMenuClick }) => {
     setPageResults([]);
     setShowResults(false);
     setSelectedIndex(-1);
+  };
+
+  const handleLogout = async () => {
+    await logout(setIsLoggingOut);
   };
 
   const highlightMatch = (text, query) => {
@@ -639,11 +644,16 @@ const DashboardHeader = ({ onMenuClick }) => {
               )}
             </button>
             <button
-              onClick={logout}
-              className="hidden md:block p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-red-600"
-              title="Logout"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="hidden md:block p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={isLoggingOut ? "Logging out..." : "Logout"}
             >
-              <LogOut className="h-5 w-5" />
+              {isLoggingOut ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <LogOut className="h-5 w-5" />
+              )}
             </button>
           </div>
         </div>

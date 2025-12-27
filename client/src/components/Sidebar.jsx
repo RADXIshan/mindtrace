@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Clock, Users, Bell, Calendar, AlertTriangle, Shield, Settings, HelpCircle, X, LogOut, Sparkles } from 'lucide-react';
+import { Home, Clock, Users, Bell, Calendar, AlertTriangle, Shield, Settings, HelpCircle, X, LogOut, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { logout } from '../services/auth';
 import { userApi } from '../services/api';
@@ -8,6 +8,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [profile, setProfile] = useState(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const navItems = [
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
@@ -61,6 +62,10 @@ const Sidebar = ({ isOpen, onClose }) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
+  const handleLogout = async () => {
+    await logout(setIsLoggingOut);
+  };
+
   const getInitials = () => {
     if (!profile) return 'U';
     if (profile.full_name) {
@@ -82,7 +87,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[1040] md:hidden"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-1040 md:hidden"
           onClick={onClose}
         />
       )}
@@ -90,7 +95,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed md:sticky top-0 left-0 h-screen bg-white border-r border-gray-200 z-[1050]
+          fixed md:sticky top-0 left-0 h-screen bg-white border-r border-gray-200 z-1050
           transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           w-72 flex flex-col
@@ -163,11 +168,16 @@ const Sidebar = ({ isOpen, onClose }) => {
           })}
 
           <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-red-600 hover:bg-red-50"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <LogOut className="h-5 w-5 text-red-500" />
-            <span>Logout</span>
+            {isLoggingOut ? (
+              <Loader2 className="h-5 w-5 text-red-500 animate-spin" />
+            ) : (
+              <LogOut className="h-5 w-5 text-red-500" />
+            )}
+            <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
           </button>
         </div>
 

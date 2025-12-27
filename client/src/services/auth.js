@@ -22,13 +22,19 @@ export const signup = async (email, password, fullName) => {
 
 
 
-export const logout = async () => {
+export const logout = async (setLoading = null) => {
   try {
+    if (setLoading) setLoading(true);
+    
     // Optional: Call backend to invalidate session/cookie if applicable
     await api.post('/auth/logout');
+    
+    // Add a small delay to show the loading animation
+    await new Promise(resolve => setTimeout(resolve, 500));
   } catch (error) {
     console.error('Logout error:', error);
   } finally {
+    if (setLoading) setLoading(false);
     localStorage.removeItem('token');
     window.location.href = '/login';
   }

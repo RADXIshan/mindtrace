@@ -2,6 +2,14 @@
 
 > **AI-Powered Memory Assistant for Smart Glasses**
 
+<div align="center">
+
+![Smart Glasses Integration](screenshots/meta-glasses.jpeg)
+
+*Empowering users with memory challenges through real-time AI assistance on wearable devices*
+
+</div>
+
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.123-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React 19](https://img.shields.io/badge/React-19.2-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
@@ -17,11 +25,19 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.9-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](http://makeapullrequest.com)
 
+<div align="center">
+
+**[📸 View Screenshots](#screenshots) • [🚀 Quick Start](#quick-start) • [📚 API Docs](#api-documentation) • [🤝 Contributing](#contributing)**
+
+</div>
+
 ---
 
 ## Overview
 
 MindTrace is a production-ready AI memory assistant designed for Ray-Ban Meta smart glasses and similar wearable devices. It combines real-time face recognition, live speech transcription, and context-aware AI assistance to help users—particularly those with memory challenges—navigate social interactions with confidence.
+
+> 💡 **See it in action**: Check out the [Screenshots](#screenshots) section below to explore the dashboard, smart glasses HUD, and key features.
 
 ### Core Capabilities
 
@@ -33,6 +49,38 @@ MindTrace is a production-ready AI memory assistant designed for Ray-Ban Meta sm
 - **Emergency SOS System**: One-touch alerts with GPS location sharing
 - **Smart Reminders**: Medication, meal, and activity scheduling with notifications
 - **Comprehensive Dashboard**: Mobile-responsive web interface for caregivers and users
+
+---
+
+## Screenshots
+
+<div align="center">
+
+### Dashboard Overview
+![Dashboard](screenshots/dashboard.jpeg)
+*Main dashboard showing interaction statistics, recent contacts, and quick access to key features*
+
+### Contact Management
+![Contact Management](screenshots/contact.jpeg)
+*Manage contacts with profile photos, relationships, and interaction history*
+
+### AI Summarizer & Insights
+![AI Summarizer](screenshots/ai-summarizer.jpg)
+*Generate intelligent summaries and insights from your interaction history*
+
+### Smart Reminders
+![Reminders](screenshots/reminder.jpeg)
+*Set medication, meal, and activity reminders with customizable schedules*
+
+### Emergency SOS System
+![SOS](screenshots/sos.jpeg)
+*One-touch emergency alerts with GPS location sharing for caregivers*
+
+### Smart Glasses Integration
+![Meta Glasses](screenshots/meta-glasses.jpeg)
+*Real-time HUD overlay on Ray-Ban Meta smart glasses with face recognition and transcription*
+
+</div>
 
 ---
 

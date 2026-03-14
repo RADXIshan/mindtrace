@@ -33,29 +33,40 @@ CLIENT_URL = os.getenv("CLIENT_URL", "http://localhost:5173")
 GLASS_URL = os.getenv("GLASS_URL", "http://localhost:5174")
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-should-be-in-env")
 
-# Create Database Tables
-Base.metadata.create_all(bind=engine)
+# Create Database Tables (Moved to lifespan)
+# Base.metadata.create_all(bind=engine)
 
 # Lifespan context manager for startup and shutdown events
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Pre-load face recognition models to avoid cold start delays
+    # Ensure database tables exist
     try:
-        from .routes.contactRoutes import get_face_app
-        import numpy as np
-        import cv2
-        
-        print("Pre-loading face recognition models...")
-        face_app = get_face_app()
-        print("✓ Face recognition models loaded")
-        
-        # Warmup: Run a dummy inference to initialize CUDA/CPU kernels
-        print("Warming up face recognition engine...")
-        dummy_image = np.zeros((480, 480, 3), dtype=np.uint8)
-        face_app.get(dummy_image)
-        print("✓ Face recognition engine warmed up and ready")
+        print("Ensuring database tables exist...")
+        Base.metadata.create_all(bind=engine)
+        print("✓ Database tables verified")
     except Exception as e:
-        print(f"⚠ Warning: Failed to pre-load face recognition models: {e}")
+        print(f"⚠ Warning: Database initialization failed: {e}")
+
+    # Startup: Pre-load face recognition models to avoid cold start delays
+    if os.getenv("SKIP_WARMUP", "false").lower() == "true":
+        print("⏭ Skipping face recognition warmup as requested")
+    else:
+        try:
+            from .routes.contactRoutes import get_face_app
+            import numpy as np
+            import cv2
+            
+            print("Pre-loading face recognition models...")
+            face_app = get_face_app()
+            print("✓ Face recognition models loaded")
+            
+            # Warmup: Run a dummy inference to initialize CUDA/CPU kernels
+            print("Warming up face recognition engine...")
+            dummy_image = np.zeros((480, 480, 3), dtype=np.uint8)
+            face_app.get(dummy_image)
+            print("✓ Face recognition engine warmed up and ready")
+        except Exception as e:
+            print(f"⚠ Warning: Failed to pre-load face recognition models: {e}")
     
     # Startup: Start the reminder scheduler
     scheduler_task = asyncio.create_task(scheduler.start())
@@ -101,7 +112,7 @@ app.include_router(auth_router)
 app.include_router(face_router, prefix="/face", tags=["Face Recognition"])
 app.include_router(contact_router)
 app.include_router(interaction_router)
-app.include_router(alert_router)
+# app.include_router(alert_router)
 app.include_router(reminder_router)
 app.include_router(sos_router)
 app.include_router(chat_router)

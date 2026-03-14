@@ -13,10 +13,14 @@ from jose import jwt, JWTError
 
 router = APIRouter()
 
-# Initialize models (lazy loading or global)
-# For better performance, we should load this once. 
-# In a real app, use a lifespan event or dependency injection.
-face_app = load_models()
+# Face recognition model is loaded lazily to speed up startup
+face_app_loaded = None
+
+def get_face_app():
+    global face_app_loaded
+    if face_app_loaded is None:
+        face_app_loaded = load_models()
+    return face_app_loaded
 
 # Images are stored via contacts page, not uploaded directly here
 
@@ -40,7 +44,8 @@ async def recognize_face_endpoint(
 
         # Pass user_id to restrict recognition to user's contacts
         # Run CPU-bound face recognition in a separate thread to avoid blocking the event loop
-        result = await asyncio.to_thread(recognize_face, face_app, img, user_id=current_user.id)
+        app = get_face_app()
+        result = await asyncio.to_thread(recognize_face, app, img, user_id=current_user.id)
         
         # Ensure result is always a list
         if result is None:
@@ -147,7 +152,8 @@ async def sync_faces_from_database(
     This will rebuild the embeddings.json file from all contacts with profile photos.
     """
     try:
-        result = sync_embeddings_from_db(face_app, db)
+        app = get_face_app()
+        result = sync_embeddings_from_db(app, db)
         
         if result.get("success"):
             return JSONResponse(
@@ -205,7 +211,8 @@ async def websocket_recognize(
                 continue
 
             # Run recognition in thread pool
-            result = await asyncio.to_thread(recognize_face, face_app, img, user_id=user_id)
+            app = get_face_app()
+            result = await asyncio.to_thread(recognize_face, app, img, user_id=user_id)
             
             if result is None:
                 result = []

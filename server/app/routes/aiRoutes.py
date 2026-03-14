@@ -40,8 +40,15 @@ class MultiTurnRAGRequest(BaseModel):
 class InsightsRequest(BaseModel):
     topic: Optional[str] = None
 
-# Initialize AI engines
-summarizer = InteractionSummarizer()
+# AI engines are loaded lazily to speed up startup
+summarizer = None
+
+def get_summarizer():
+    global summarizer
+    if summarizer is None:
+        from ai_engine.summarizer import InteractionSummarizer
+        summarizer = InteractionSummarizer()
+    return summarizer
 
 @router.post("/summarize")
 def summarize_interactions(
@@ -97,7 +104,8 @@ def summarize_interactions(
             })
         
         # Generate summary
-        result = summarizer.summarize_interactions(
+        summarizer_engine = get_summarizer()
+        result = summarizer_engine.summarize_interactions(
             interaction_dicts,
             summary_type=request.summary_type,
             focus_areas=request.focus_areas
@@ -156,7 +164,8 @@ def summarize_contact_interactions(
             })
         
         # Generate contact-specific summary
-        result = summarizer.generate_contact_summary(interaction_dicts, contact.name)
+        summarizer_engine = get_summarizer()
+        result = summarizer_engine.generate_contact_summary(interaction_dicts, contact.name)
         
         return result
         

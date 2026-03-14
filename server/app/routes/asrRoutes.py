@@ -24,14 +24,20 @@ router = APIRouter(
     tags=["ASR"]
 )
 
-# Initialize engines
-# Use 'base.en' model which is optimized for English (better accuracy/speed than generic base)
-try:
-    asr_engine = ASREngine(model_size="base.en")
-    print("ASR Engine initialized in routes.")
-except Exception as e:
-    print(f"Failed to initialize ASR Engine: {e}")
-    asr_engine = None
+# Face recognition app and ASR engine are loaded lazily to speed up startup
+asr_engine = None
+
+def get_asr_engine():
+    global asr_engine
+    if asr_engine is None:
+        try:
+            # Use 'base.en' model which is optimized for English
+            asr_engine = ASREngine(model_size="base.en")
+            print("✓ ASR Engine initialized.")
+        except Exception as e:
+            print(f"Failed to initialize ASR Engine: {e}")
+            asr_engine = None
+    return asr_engine
 
 @router.get("/conversations")
 async def get_conversations(
@@ -331,7 +337,10 @@ async def websocket_asr(
     last_ping_time = asyncio.get_event_loop().time()
     PING_INTERVAL = 20.0 
 
-    if not asr_engine:
+    # Get engine lazily
+    engine = get_asr_engine()
+    
+    if not engine:
         print("❌ Error: ASR Engine is not initialized")
         try:
             await websocket.send_json({
@@ -450,7 +459,7 @@ async def websocket_asr(
                     
                     if len(current_window) > 8000 and rms > RMS_THRESHOLD:
                          # Run ASR on threadpool
-                        transcript = await asyncio.to_thread(asr_engine.transcribe_audio_chunk, current_window)
+                        transcript = await asyncio.to_thread(engine.transcribe_audio_chunk, current_window)
                         
                         if transcript and transcript.strip() and transcript != last_transcript:
                             last_transcript = transcript
@@ -512,7 +521,7 @@ async def websocket_asr(
                     # If > 30s, it handles it internally via sliding window if configured, 
                     # but simple transcribe works good enough for minutes usually.
                     
-                    transcript = await asyncio.to_thread(asr_engine.transcribe_audio_chunk, full_audio)
+                    transcript = await asyncio.to_thread(engine.transcribe_audio_chunk, full_audio)
                     print(f"✓ Final Complete Transcript: {transcript}")
                     
                     if transcript and transcript.strip():

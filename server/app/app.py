@@ -126,6 +126,10 @@ app.include_router(ai_router)
 def server_status():
     return JSONResponse(content={ "message": "Server is live" }, status_code=200)
 
+@app.get("/health")
+def health_check():
+    return JSONResponse(content={ "message": "Health check passed" }, status_code=200)
+
 @app.get("/health/scheduler")
 def scheduler_health():
     """Check if the reminder scheduler is running"""

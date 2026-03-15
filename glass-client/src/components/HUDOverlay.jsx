@@ -13,25 +13,30 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
     const getTagStyle = (position, placement, index) => {
         if (!position) return {};
 
-        const { left, top, width } = position;
-        const verticalOffset = (index % 3) * 40; // Stagger to prevent vertical overlap
+        const { left, top, width, height } = position;
+        
+        // Center the tag vertically relative to the face
+        // Tag height is roughly 200px, so we can align it around the middle of the face
+        const verticalAlign = top + (height / 2) - 100;
 
-        // If placement is 'right', tag goes to the RIGHT of the face
-        // If placement is 'left', tag goes to the LEFT of the face
-        const horizontalOffset = placement === 'right' ? width + 40 : -280; // Tag width ~260px + margin
+        // Ensure the gap perfectly equals the length of the connecting line (w-8 line + w-2 dot = 40px)
+        const horizontalPos = placement === 'right' ? left + width + 40 : left - 40; 
 
         return {
             position: 'absolute',
-            left: `${left + horizontalOffset}px`,
-            top: `${top + verticalOffset}px`,
-            transition: 'left 0.1s ease-out, top 0.1s ease-out',
+            left: `${horizontalPos}px`,
+            top: `${verticalAlign}px`,
+            transform: placement === 'left' ? 'translate3d(-100%, 0, 0)' : 'translate3d(0, 0, 0)',
+            transition: 'left 0.15s ease-out, top 0.15s ease-out, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s',
             willChange: 'transform, left, top',
-            transform: 'translate3d(0, 0, 0)',
             zIndex: 1000 + index,
             backfaceVisibility: 'hidden',
             perspective: 1000
         };
     };
+
+    // Keep track of face side placement with hysteresis to prevent flip-flopping when crossing the center
+    const prevPlacementRef = React.useRef(new Map());
 
     const formatISTTime = (timestamp) => {
         if (!timestamp) return null;
@@ -223,17 +228,17 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
                     </div>
                 </div>
 
-                {/* Connecting Line */}
+                {/* Connecting Line (length strictly 40px: 32px line + 8px dot) */}
                 {isTagOnRight ? (
-                    <>
-                        <div className={`absolute top-8 left-0 -translate-x-full h-px ${isDark ? 'w-8 bg-white/30' : 'w-10 bg-white/60'}`} />
-                        <div className={`absolute top-8 -left-1 w-2 h-2 rounded-full ${isDark ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]'}`} />
-                    </>
+                    <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-full flex items-center">
+                        <div className={`w-2 h-2 rounded-full ${isDark ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]'}`} />
+                        <div className={`h-px w-8 ${isDark ? 'bg-white/30' : 'bg-white/60'}`} />
+                    </div>
                 ) : (
-                    <>
-                        <div className={`absolute top-8 right-0 translate-x-full h-px ${isDark ? 'w-8 bg-white/30' : 'w-10 bg-white/60'}`} />
-                        <div className={`absolute top-8 -right-1 w-2 h-2 rounded-full ${isDark ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]'}`} />
-                    </>
+                    <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-full flex items-center">
+                        <div className={`h-px w-8 ${isDark ? 'bg-white/30' : 'bg-white/60'}`} />
+                        <div className={`w-2 h-2 rounded-full ${isDark ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]'}`} />
+                    </div>
                 )}
             </div>
         );
@@ -268,12 +273,17 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
                 {recognitionResult && Array.isArray(recognitionResult) && recognitionResult.map((result, index) => {
                     if (!result.position) return null;
 
-                    // Determine placement based on screen position
-                    // If face is on left half (< 50vw), place tag on RIGHT
-                    // If face is on right half (> 50vw), place tag on LEFT
                     const screenCenter = window.innerWidth / 2;
                     const faceCenter = result.position.left + result.position.width / 2;
-                    const placement = faceCenter < screenCenter ? 'right' : 'left';
+                    
+                    // Add hysteresis to prevent jumpy left/right flip-flopping near center
+                    let placement = prevPlacementRef.current.get(result.trackId) || (faceCenter < screenCenter ? 'right' : 'left');
+                    if (placement === 'right' && faceCenter > screenCenter + 150) {
+                        placement = 'left';
+                    } else if (placement === 'left' && faceCenter < screenCenter - 150) {
+                        placement = 'right';
+                    }
+                    prevPlacementRef.current.set(result.trackId, placement);
 
                     return (
                         <div key={`track-${result.trackId}`} style={getTagStyle(result.position, placement, index)}>
@@ -346,7 +356,15 @@ const HUDOverlay = ({ mode, recognitionResult, debugStatus, subtitle }) => {
 
                 const screenCenter = window.innerWidth / 2;
                 const faceCenter = result.position.left + result.position.width / 2;
-                const placement = faceCenter < screenCenter ? 'right' : 'left';
+                
+                // Hysteresis
+                let placement = prevPlacementRef.current.get(result.trackId) || (faceCenter < screenCenter ? 'right' : 'left');
+                if (placement === 'right' && faceCenter > screenCenter + 150) {
+                    placement = 'left';
+                } else if (placement === 'left' && faceCenter < screenCenter - 150) {
+                    placement = 'right';
+                }
+                prevPlacementRef.current.set(result.trackId, placement);
 
                 return (
                     <div key={`track-${result.trackId}`} style={getTagStyle(result.position, placement, index)}>

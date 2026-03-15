@@ -80,9 +80,6 @@ const FaceRecognition = () => {
 
     const loopActiveRef = useRef(false);
     const MIN_REQUEST_INTERVAL = 8; // ~120 FPS for absolute maximum throughput
-    const faceTrackingCache = useRef(new Map()); // Cache for smoother face tracking
-    const velocityCache = useRef(new Map()); // Track velocity for predictive smoothing
-    const frameInterpolationRef = useRef(null); // For frame interpolation between API calls
     const requestAnimationFrameId = useRef(null); // Track RAF for cleanup
     const processFrameRef = useRef(null);
 
@@ -541,70 +538,24 @@ const FaceRecognition = () => {
         const trackedResults = updateTracks(processedResults);
 
         if (trackedResults.length > 0) {
-            // 3. Apply Smoothing using Stable Track IDs
-            const smoothedResults = trackedResults.map(result => {
-                // KEY CHANGE: Use trackId for caching instead of name
-                const cacheKey = `track_${result.trackId}`;
-
-                const cached = faceTrackingCache.current.get(cacheKey);
-                const velocity = velocityCache.current.get(cacheKey);
-
-                if (cached && result.position) {
-                    // Calculate velocity
-                    const newVelocity = {
-                        left: result.position.left - cached.left,
-                        top: result.position.top - cached.top,
-                        width: result.position.width - cached.width,
-                        height: result.position.height - cached.height
-                    };
-
-                    const velocitySmooth = 0.6; // Smoother for multiple faces
-                    const smoothedVelocity = velocity ? {
-                        left: velocity.left * (1 - velocitySmooth) + newVelocity.left * velocitySmooth,
-                        top: velocity.top * (1 - velocitySmooth) + newVelocity.top * velocitySmooth,
-                        width: velocity.width * (1 - velocitySmooth) + newVelocity.width * velocitySmooth,
-                        height: velocity.height * (1 - velocitySmooth) + newVelocity.height * velocitySmooth
-                    } : newVelocity;
-
-                    velocityCache.current.set(cacheKey, smoothedVelocity);
-
-                    // Prediction factor
-                    const smoothFactor = 0.6; // Increase smoothing for stability
-                    const predictFactor = 0.2;
-
-                    result.position = {
-                        left: cached.left * (1 - smoothFactor) + result.position.left * smoothFactor + smoothedVelocity.left * predictFactor,
-                        top: cached.top * (1 - smoothFactor) + result.position.top * smoothFactor + smoothedVelocity.top * predictFactor,
-                        width: cached.width * (1 - smoothFactor) + result.position.width * smoothFactor + smoothedVelocity.width * predictFactor,
-                        height: cached.height * (1 - smoothFactor) + result.position.height * smoothFactor + smoothedVelocity.height * predictFactor
-                    };
-                }
-
-                if (result.position) {
-                    faceTrackingCache.current.set(cacheKey, result.position);
-                }
-
-                return result;
-            });
-
-            setRecognitionResult(smoothedResults);
-            lastResultRef.current = smoothedResults;
+            setRecognitionResult(trackedResults);
+            lastResultRef.current = trackedResults;
 
             // Debug info
-            const faceCount = smoothedResults.length;
+            const faceCount = trackedResults.length;
             if (faceCount > 0) {
-                const faceNames = smoothedResults.slice(0, 3).map(r => r.name).join(", ");
+                const faceNames = trackedResults.slice(0, 3).map(r => r.name).join(", ");
                 const moreText = faceCount > 3 ? ` +${faceCount - 3}` : '';
                 setDebugStatus(`${faceCount} Faces: ${faceNames}${moreText}`);
             }
 
             // ASR Trigger & Update Logic
-            const identifiedPerson = smoothedResults.find(r => r.name !== "Unknown");
-            const bestName = identifiedPerson?.name || smoothedResults[0]?.name || "Unknown";
+            const identifiedPerson = trackedResults.find(r => r.name !== "Unknown");
+            const bestName = identifiedPerson?.name || trackedResults[0]?.name || "Unknown";
             const currentUserId = userIdRef.current;
 
             // 1. Start if not recording (ANYONE, even Unknown)
-            if (!isRecordingRef.current && currentUserId && smoothedResults.length > 0) {
+            if (!isRecordingRef.current && currentUserId && trackedResults.length > 0) {
                 // If it's the first time, use bestName (even if Unknown)
                 startRecording(bestName);
             }
@@ -633,8 +584,6 @@ const FaceRecognition = () => {
                 timeoutRef.current = setTimeout(() => {
                     lastResultRef.current = null;
                     timeoutRef.current = null;
-                    faceTrackingCache.current.clear();
-                    velocityCache.current.clear();
                     setDebugStatus("No Faces");
                     stopRecording();
                 }, 2000);
@@ -755,34 +704,6 @@ const FaceRecognition = () => {
         connectFaceWebSocketRef.current = connectFaceWebSocket;
     }, [connectFaceWebSocket]);
 
-    // Frame interpolation for ultra-smooth rendering between API calls
-    const interpolateFrames = useCallback(() => {
-        setRecognitionResult(prev => {
-            if (!prev || !Array.isArray(prev) || prev.length === 0) {
-                return prev;
-            }
-
-            return prev.map(result => {
-                const cacheKey = `track_${result.trackId}`;
-                const velocity = velocityCache.current.get(cacheKey);
-
-                if (velocity && result.position) {
-                    const interpolationFactor = 0.15;
-                    return {
-                        ...result,
-                        position: {
-                            left: result.position.left + velocity.left * interpolationFactor,
-                            top: result.position.top + velocity.top * interpolationFactor,
-                            width: result.position.width + velocity.width * interpolationFactor,
-                            height: result.position.height + velocity.height * interpolationFactor
-                        }
-                    };
-                }
-                return result;
-            });
-        });
-    }, []);
-
     const startRecognitionLoop = useCallback(() => {
         if (loopActiveRef.current) return;
         loopActiveRef.current = true;
@@ -801,9 +722,7 @@ const FaceRecognition = () => {
             }, 100);
         }
 
-        // Start frame interpolation at 120 FPS
-        frameInterpolationRef.current = setInterval(interpolateFrames, 8);
-    }, [connectFaceWebSocket, interpolateFrames]);
+    }, [connectFaceWebSocket]);
 
     useEffect(() => {
         setTimeout(() => {
@@ -813,7 +732,6 @@ const FaceRecognition = () => {
 
         // Capture refs for robust cleanup
         const currentVideo = videoRef.current;
-        const currentInterp = frameInterpolationRef.current;
         const currentRAF = requestAnimationFrameId.current;
         const currentInterval = intervalRef.current;
 
@@ -825,7 +743,6 @@ const FaceRecognition = () => {
                 faceWsRef.current = null;
             }
             if (currentInterval) clearInterval(currentInterval);
-            if (currentInterp) clearInterval(currentInterp);
             if (currentRAF) cancelAnimationFrame(currentRAF);
             if (currentVideo && currentVideo.srcObject) {
                 currentVideo.srcObject.getTracks().forEach(track => track.stop());

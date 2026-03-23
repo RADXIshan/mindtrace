@@ -81,7 +81,9 @@ MindTrace is a production-ready AI memory assistant designed for Ray-Ban Meta sm
 *Real-time HUD overlay on Ray-Ban Meta smart glasses with face recognition and transcription*
 
 ### Live Demonstration
-<video src="screenshots/demo.mp4" autoplay loop muted playsinline width="100%" controls="controls"></video>
+<video src="https://github.com/RADXIshan/mindtrace/raw/main/screenshots/demo.mp4" autoplay loop muted playsinline width="100%" controls="controls"></video>
+
+*(If the video player doesn't load inline, [click here to view the demo](https://github.com/RADXIshan/mindtrace/blob/main/screenshots/demo.mp4))*
 *Watch MindTrace in action*
 
 </div>

@@ -21,13 +21,13 @@ Whether it's real-time face recognition on a HUD (Heads-Up Display) or a compreh
 ## 📸 Visual Showcase
 
 ````carousel
-![Dashboard](/Users/ishanroy/Desktop/Projects/MindTrace/screenshots/dashboard.jpeg)
+![Dashboard](./screenshots/dashboard.jpeg)
 <!-- slide -->
-![AI Summarizer](/Users/ishanroy/Desktop/Projects/MindTrace/screenshots/ai-summarizer.jpg)
+![AI Summarizer](./screenshots/ai-summarizer.jpg)
 <!-- slide -->
-![Contact Directory](/Users/ishanroy/Desktop/Projects/MindTrace/screenshots/contact.jpeg)
+![Contact Directory](./screenshots/contact.jpeg)
 <!-- slide -->
-![HUD Interface](/Users/ishanroy/Desktop/Projects/MindTrace/screenshots/meta-glasses.png)
+![HUD Interface](./screenshots/meta-glasses.png)
 ````
 
 ---

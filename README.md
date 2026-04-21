@@ -1,6 +1,6 @@
 # 🧠 MindTrace
 
-**Your Cognitive Companion — Digitizing Human Connection through Wearable AI.**
+**A "Second Brain" for your glasses. Remember names, recall conversations, and track your social life.**
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
@@ -10,96 +10,83 @@
 
 ---
 
-## 🌟 Overview
+## 🌟 What is MindTrace?
 
-**MindTrace** is an advanced "Second Brain" ecosystem designed to augment human memory and social interaction. By combining wearable-first interfaces with state-of-the-art AI, MindTrace helps you remember names, recall conversations, and never miss a beat in your social and professional life.
+MindTrace is a tool to help you remember people and what you talked about. It uses a wearable HUD (like Meta Glass) to identify faces in real-time and a web dashboard to search through your past interactions. 
 
-Whether it's real-time face recognition on a HUD (Heads-Up Display) or a comprehensive web dashboard for semantic memory retrieval, MindTrace is built for those who value precise information and meaningful connections.
-
----
-
-## 📸 Visual Showcase
-
-````carousel
-![Dashboard](./screenshots/dashboard.jpeg)
-<!-- slide -->
-![AI Summarizer](./screenshots/ai-summarizer.jpg)
-<!-- slide -->
-![Contact Directory](./screenshots/contact.jpeg)
-<!-- slide -->
-![HUD Interface](./screenshots/meta-glasses.png)
-````
+Basically, it's for when you forget names or need to remember that one thing someone mentioned three weeks ago.
 
 ---
 
-## 🏗️ Core Ecosystem
+## 📸 Screenshots
 
-MindTrace is comprised of three primary pillars:
+| **HUD Interface** | **Dashboard** |
+| :---: | :---: |
+| ![HUD Interface](./screenshots/meta-glasses.png) | ![Dashboard](./screenshots/dashboard.jpeg) |
+| **AI Summarizer** | **Contact Directory** |
+| ![AI Summarizer](./screenshots/ai-summarizer.jpg) | ![Contact Directory](./screenshots/contact.jpeg) |
+| **Smart Reminders** | **Advanced SOS** |
+| ![Smart Reminders](./screenshots/reminder.jpeg) | ![Advanced SOS](./screenshots/sos.jpeg) |
+
+---
+
+## 🏗️ The Setup
+
+MindTrace is split into three parts:
 
 ### 1. 🖥️ Web Dashboard (`/client`)
-A sophisticated command center built with **React 19** and **Vite**. 
-- Manage detailed contacts and relationship histories.
-- Interactive **Recharts** dashboard for social activity metrics.
-- AI-powered Interaction Summarizer.
-- Secure SOS and custom alert configurations.
+A React 19 app to manage your contacts and see your stats.
+- View contact history and relationship notes.
+- Charts for social activity (built with Recharts).
+- Interaction summaries.
+- SOS/alert settings.
 
 ### 2. 🥽 Glass HUD (`/glass-client`)
-A specialized interface optimized for wearable devices (like Meta Glass) or lightweight mobile browsers.
-- **Low-latency Face Recognition** in the vicinity.
-- **Ambient ASR** (Automatic Speech Recognition) for real-time transcription.
-- Minimalist HUD overlays for identifying acquaintances instantly.
+The interface for wearable devices or mobile browsers.
+- Fast face recognition.
+- Real-time speech-to-text (ASR).
+- Simple overlays to identify people instantly.
 
-### 3. ⚙️ AI Engine & Backend (`/server`)
-A high-performance **FastAPI** backend orchestrating complex ML workloads:
-- **InsightFace**: Enterprise-grade facial analysis and recognition.
-- **OpenAI Whisper**: High-accuracy ambient transcription.
-- **RAG Engine**: Vector-based semantic search powered by **ChromaDB** and **Google Gemini**.
-- **LangChain**: Complex LLM orchestration for memory summarization.
+### 3. ⚙️ AI Backend (`/server`)
+A FastAPI server that handles the heavy lifting:
+- **InsightFace**: For face analysis and matching.
+- **OpenAI Whisper**: Transcribes ambient audio.
+- **RAG Engine**: Semantic search using ChromaDB and Google Gemini.
+- **LangChain**: Connects the LLMs to your memory data.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Features
 
-- **👁️ Face Identity Service**: Identify family, friends, or coworkers instantly via facial embedding matching.
-- **🎙️ Ambient Mind Tracking**: Records and transcribes interactions in the background, tagging them to specific contacts.
-- **🧠 Semantic Memory Search**: Ask questions like *"When was the last time I met John and what did we discuss?"*
-- **📅 Smart Reminders**: Automatically generated tasks based on conversation context (e.g., *"Remind me to buy the gift John mentioned"*).
-- **🚨 Advanced SOS System**: Location-based emergency alerts with custom notification hooks.
-- **📊 Social Insights**: Visualize your interaction frequency and relationship depth over time.
+- **👁️ Face ID**: Matches faces against your contact list.
+- **🎙️ Background Tracking**: Records and transcribes chats, then tags them to the right person.
+- **🧠 Memory Search**: Search your history with natural language (e.g., "What did John say about his new job?").
+- **📅 Auto-Reminders**: Creates tasks based on what people say (e.g., "Buy that book Sarah recommended").
+- **🚨 SOS System**: Quick emergency alerts with location sharing.
+- **📊 Social Stats**: Visualizes how often you're meeting people.
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework**: React 19 (Vite)
-- **Styling**: Tailwind CSS 4 (Vanilla CSS approach)
-- **Animations**: Framer Motion
-- **Smooth Scroll**: Lenis
+- **Framework**: React 19 + Vite
+- **Styling**: Tailwind CSS 4
+- **Motion**: Framer Motion + Lenis
 - **Maps**: React Leaflet
 - **Icons**: Lucide React
-- **Notifications**: React Hot Toast
-- **Routing**: React Router 7
 
-### Backend
-- **Framework**: FastAPI (Python 3.12+)
-- **ORM**: SQLAlchemy
-- **Task Scheduling**: Custom Python Scheduler
-- **Authentication**: JWT (python-jose, bcrypt)
-
-### AI & ML Architecture
-- **Inference**: ONNX Runtime, PyTorch
-- **Computer Vision**: OpenCV, InsightFace
-- **Speech**: Faster Whisper / OpenAI Whisper
-- **LLM**: Google Gemini (Gemini 1.5 Pro/Flash)
-- **Vector DB**: ChromaDB
-- **Orchestration**: LangChain
+### Backend & AI
+- **API**: FastAPI (Python 3.12)
+- **DB**: SQLAlchemy + ChromaDB (Vector)
+- **AI Models**: InsightFace, Faster Whisper, Google Gemini
+- **Logic**: LangChain + ONNX Runtime
 
 ---
 
-## 🧠 Deep Dive: AI Models
+## 🧠 Model Details
 
-For a detailed technical breakdown of how we use each model, their implementation details, and the rationale behind choosing them, please refer to the **[AI Models Documentation](MODELS.md)**.
+For the technical specifics on how we tuned the models and why we picked them, check out **[MODELS.md](MODELS.md)**.
 
 ---
 
@@ -107,22 +94,22 @@ For a detailed technical breakdown of how we use each model, their implementatio
 
 ```mermaid
 graph TD
-    A[Glass HUD / Client] -->|Stream Video/Audio| B[FastAPI Server]
-    C[Web Dashboard] -->|Manage Data/Auth| B
+    A[Glass HUD / Client] -->|Video/Audio Stream| B[FastAPI Server]
+    C[Web Dashboard] -->|Data/Auth| B
     
     subgraph AI Engine
-        B --> D[Face Recognition Engine]
+        B --> D[Face Recognition]
         B --> E[ASR / Transcription]
         B --> F[Summarizer / LLM]
         F --> G[RAG / Vector DB]
     end
     
     subgraph Storage
-        B --> H[(PostgreSQL / SQLite)]
+        B --> H[(SQL DB)]
         G --> I[(ChromaDB)]
     end
     
-    D -->|Match Result| A
+    D -->|Match| A
     E -->|Transcript| F
     F -->|Insights| C
 ```
@@ -133,19 +120,19 @@ graph TD
 
 ### Prerequisites
 - Node.js 18+
-- Python 3.10-3.12
-- [uv](https://docs.astral.sh/uv/) (Recommended Python manager)
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
 - Google Gemini API Key
 
-### Quick Setup
+### Quick Start
 
-1. **Clone & Install**
+1. **Clone the repo**
    ```bash
    git clone https://github.com/yourusername/mindtrace.git
    cd mindtrace
    ```
 
-2. **Backend Setup**
+2. **Run the Backend**
    ```bash
    cd server
    uv sync
@@ -153,14 +140,14 @@ graph TD
    uv run main.py
    ```
 
-3. **Frontend Setup**
+3. **Run the Dashboard**
    ```bash
    cd client
    npm install
    npm run dev
    ```
 
-4. **Glass Client (Optional)**
+4. **Run the Glass HUD (Optional)**
    ```bash
    cd glass-client
    npm install
@@ -169,31 +156,31 @@ graph TD
 
 ---
 
-## 📂 Directory Structure
+## 📂 Folders
 
 ```text
 MindTrace/
-├── client/             # Main Web Dashboard (React + Vite)
-├── glass-client/       # Wearable HUD Interface
+├── client/             # Web Dashboard (React)
+├── glass-client/       # Wearable HUD
 ├── server/
-│   ├── app/            # FastAPI Routes & Logic
-│   ├── ai_engine/      # ML Models (FaceID, ASR, RAG)
-│   ├── data/           # Local storage & DBs
-│   └── main.py         # Entry point
-├── screenshots/        # Project visuals
-├── QUICKSTART.md       # 10-minute setup guide
-├── API.md              # Endpoint documentation
-└── CONTRIBUTING.md     # How to help
+│   ├── app/            # Routes & Logic
+│   ├── ai_engine/      # FaceID, ASR, RAG
+│   ├── data/           # Storage & DBs
+│   └── main.py         # App Entry
+├── screenshots/        # Images for README
+├── QUICKSTART.md       # 10-min guide
+├── API.md              # Endpoint docs
+└── CONTRIBUTING.md     # How to contribute
 ```
 
 ---
 
 ## 📜 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+MIT License. See `LICENSE` for details.
 
 ---
 
 <p align="center">
-  Built with ❤️ for people who need a little help remembering.
+  Built for people who need a little help remembering.
 </p>
